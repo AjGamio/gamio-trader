@@ -1,4 +1,12 @@
-import { JsonData, Order, OrderAction, Position, SLOrder, Trade } from '../interfaces/iData';
+import {
+  BuyingPower,
+  JsonData,
+  Order,
+  OrderAction,
+  Position,
+  SLOrder,
+  Trade,
+} from '../interfaces/iData';
 
 const convertDataToJSON = (dataString: string): JsonData => {
   const prefixMap: Record<string, string> = {
@@ -10,18 +18,22 @@ const convertDataToJSON = (dataString: string): JsonData => {
     '%TRADE': 'Trade',
     '%SLOrder': 'SLOrder',
     '%OrderAct': 'OrderAct',
+    '#buyingpower': 'BP',
+    BP: 'BP',
+    Client: 'Clients',
   };
 
   const hasError = dataString.includes('ERROR');
   const jsonData: JsonData = {
-    LOGIN: {
-      STATUS: hasError ? dataString : 'successed',
-      POS: [],
-      Order: [],
-      Trade: [],
-      SLOrder: [],
-      OrderAct: [],
-    },
+    STATUS: hasError ? dataString : 'successed',
+    POS: [],
+    Order: [],
+    Trade: [],
+    SLOrder: [],
+    OrderAct: [],
+    BP: [],
+    Clients: [],
+    Extras: [],
   };
   const lines = dataString.split('\n');
 
@@ -30,9 +42,9 @@ const convertDataToJSON = (dataString: string): JsonData => {
     const prefix = Object.keys(prefixMap).find((key) => line.startsWith(key));
 
     if (prefix) {
-      const key = prefixMap[prefix];
+      const key = prefixMap[prefix] ?? 'Extras';
       if (key === 'STATUS') {
-        jsonData.LOGIN[key] = line.split(' ')[1];
+        jsonData[key] = line.split(' ')[1];
       } else {
         const obj = {};
         switch (key) {
@@ -68,10 +80,22 @@ const convertDataToJSON = (dataString: string): JsonData => {
               Object.assign(obj, orderActData);
             }
             break;
+          case 'BP':
+            const buyingPOwerData = convertBuyingPowerDataToJSON(line);
+            if (buyingPOwerData) {
+              Object.assign(obj, buyingPOwerData);
+            }
+            break;
+          case 'Clients':
+            Object.assign(obj, { total: line.split(' ')[2] ?? 0 });
+            break;
+          default:
+            Object.assign(obj, line);
+            break;
         }
 
         if (Object.keys(obj).length > 0) {
-          jsonData.LOGIN[key].push(obj);
+          jsonData[key].push(obj);
         }
       }
     }
@@ -278,6 +302,32 @@ const convertOrderActDataToJSON = (dataString: string): OrderAction | null => {
   }
 
   return orderActData[0] || null;
+};
+
+const convertBuyingPowerDataToJSON = (
+  dataString: string,
+): BuyingPower | null => {
+  const lines = dataString.split('\n');
+  const buyingPowerData: BuyingPower[] = [];
+
+  for (const line of lines) {
+    const components = line.trim().split(/\s+/);
+    if (
+      components.length === 3 &&
+      (components[0] === '#buyingpower' || components[0] === 'BP')
+    ) {
+      const [, bp, nbp] = components.map(Number);
+
+      const buyingPower: BuyingPower = {
+        bp,
+        nbp,
+      };
+
+      buyingPowerData.push(buyingPower);
+    }
+  }
+
+  return buyingPowerData[0] || null;
 };
 
 export const processSocketData = (data: string): JsonData =>

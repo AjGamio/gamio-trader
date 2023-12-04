@@ -2,7 +2,8 @@
 import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { DASController } from './das.controller';
-import { DasService } from 'gamio/domain/das/das.service';
+import { DasEventModule } from '../das-event/das-event.module';
+import { EnvConfig } from '../config/env.config';
 
 @Module({
   imports: [
@@ -11,12 +12,13 @@ import { DasService } from 'gamio/domain/das/das.service';
         name: 'DAS_SERVICE',
         transport: Transport.TCP,
         options: {
-          port: 3001, // Change this port as needed
+          port: EnvConfig.PORT, // Change this port as needed
         },
       },
     ]),
+    DasEventModule,
   ],
-  providers: [DasService],
+  providers: [],
   controllers: [DASController],
 })
 export class DasModule {}

@@ -1,37 +1,61 @@
 import { Socket } from 'net';
-import { EventEmitter } from 'events';
-import { processSocketData } from '../common/data.helper';
+import { EventEmitter } from 'stream';
+import { Logger } from '@nestjs/common';
+import { ITcpCommand } from '../interfaces/iCommand';
+import { ResponseEventArgs } from './response.event.args';
+import { GenericEventEmitter } from './event.processor';
+import { TraderCommandType } from '../enums';
+import { EnvConfig } from 'apps/trade-server/src/config/env.config';
+import { CommandData } from '../interfaces/iData';
 
-class CancellationToken {
-  private isCancellationRequested: boolean = false;
-  private eventEmitter: EventEmitter = new EventEmitter();
+class ResponseProcessor extends EventEmitter {
+  private readonly logger: Logger;
+  private readonly command: ITcpCommand;
 
-  public get isCancellation(): boolean {
-    return this.isCancellationRequested;
+  public readonly LoginResponse: GenericEventEmitter<
+    ResponseEventArgs,
+    TraderCommandType.LOGIN_COMMAND
+  > = new EventEmitter();
+  public readonly LogoutResponse: GenericEventEmitter<
+    ResponseEventArgs,
+    TraderCommandType.QUIT_COMMAND
+  > = new EventEmitter();
+  public readonly ClientResponse: GenericEventEmitter<
+    ResponseEventArgs,
+    TraderCommandType.CLIENT_COMMAND
+  > = new EventEmitter();
+  public readonly EchoResponse: GenericEventEmitter<
+    ResponseEventArgs,
+    TraderCommandType.ECHO_COMMAND
+  > = new EventEmitter();
+  public readonly BuyingPowerResponse: GenericEventEmitter<
+    ResponseEventArgs,
+    TraderCommandType.GET_BUYING_POWER_COMMAND
+  > = new EventEmitter();
+
+  constructor() {
+    super();
+    this.logger = new Logger(this.constructor.name);
   }
 
-  public cancel(): void {
-    this.isCancellationRequested = true;
-    this.eventEmitter.emit('cancellationRequested');
-  }
-
-  public onCancellationRequested(callback: () => void): void {
-    this.eventEmitter.on('cancellationRequested', callback);
-  }
-}
-
-class ResponseProcessor {
-  private cancellationToken: CancellationToken;
-
-  constructor(cancellationToken: CancellationToken) {
-    this.cancellationToken = cancellationToken;
-  }
-
-  async listenAsync(stream: Socket): Promise<void> {
+  async listenAsync(
+    stream: Socket,
+    commandType: TraderCommandType,
+  ): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const onData = (data: Buffer) => {
         const receivedData = data.toString();
-        this.triggerEvent(receivedData);
+        if (EnvConfig.ENABLE_DEBUG) {
+          this.logger.log(
+            `commandType: ${commandType}, receivedData:${receivedData}`,
+          );
+        }
+
+        // Emit events based on command type
+        this.emitEvent(
+          commandType,
+          new ResponseEventArgs(commandType, receivedData),
+        );
       };
 
       const onError = (err: Error) => {
@@ -50,39 +74,24 @@ class ResponseProcessor {
       stream.on('data', onData);
       stream.on('error', onError);
       stream.on('close', onClose);
-
-      // const stopListening = () => {
-      //   // Remove event listeners
-      //   stream.off('data', onData);
-      //   stream.off('error', onError);
-      //   stream.off('close', onClose);
-      // };
-
-      // // Set up cancellation
-      // this.cancellationToken?.onCancellationRequested(() => {
-      //   console.log('Cancellation requested');
-      //   stopListening();
-      //   resolve();
-      // });
     });
   }
 
-  private triggerEvent(data: string) {
-    // Implement your logic to handle the received data, e.g., trigger an event
-    // console.log('Triggering event with data:', data);
-    if (data.indexOf('#POS') > -1) {
-      const positions = processSocketData(data);
-      console.log(
-        '🚀 ~ file: response.processor.ts:37 ~ ResponseProcessor ~ onData ~ positions:',
-        JSON.stringify(positions),
-      );
-    }
+  private emitEvent(commandType: TraderCommandType, data: ResponseEventArgs) {
+    const formattedData: CommandData = {
+      commandType: commandType,
+      dataId: data.correlationId,
+      data: data.data,
+    };
+    // this.logger.log(formattedData);
+    this.logger.verbose(`Emitting data for command:${data.commandType}`);
+    this.emit(commandType.toString(), formattedData);
   }
 
   private stopListening() {
     // Implement cleanup logic or additional actions when stopping listening
-    console.log('Stopping listening');
+    this.logger.verbose('Stopping listening');
   }
 }
 
-export { ResponseProcessor, CancellationToken };
+export { ResponseProcessor };

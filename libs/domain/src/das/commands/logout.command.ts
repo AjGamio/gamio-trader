@@ -1,29 +1,36 @@
 import { TraderCommandType } from '../enums';
 import { ITcpCommand } from '../interfaces/iCommand';
+import { ResponseEventArgs } from '../processors/response.event.args';
+import { ResponseProcessor } from '../processors/response.processor';
 import { BaseTcpCommand } from './base.command';
 
 export class LogoutCommand extends BaseTcpCommand {
-  public override Subscribe(responseProcessor: any): void {
-    responseProcessor.logoutResponse +=
-      this.responseProcessorLogoutResponse.bind(this);
-  }
-  public override Unsubscribe(responseProcessor: any): void {
-    responseProcessor.logoutResponse -=
-      this.responseProcessorLogoutResponse.bind(this);
-  }
-
   Result: any;
   constructor() {
-    super(TraderCommandType.QUIT_COMMAND);
+    super(TraderCommandType.QUIT_COMMAND, true);
   }
 
   static get Instance(): ITcpCommand {
     return new LogoutCommand();
   }
 
-  private responseProcessorLogoutResponse(sender: any, e: any): void {
-    this.Result =
-      e.parameters?.length === 1 ? e.parameters[0] : e.message || '';
+  Subscribe(processor: ResponseProcessor): void {
+    processor.LogoutResponse.on(
+      TraderCommandType.QUIT_COMMAND,
+      this.responseProcessorOrderServerStatusResponse,
+    );
+  }
+  Unsubscribe(processor: ResponseProcessor): void {
+    processor.LogoutResponse.off(
+      TraderCommandType.QUIT_COMMAND,
+      this.responseProcessorOrderServerStatusResponse,
+    );
+  }
+
+  private responseProcessorOrderServerStatusResponse(
+    e: ResponseEventArgs,
+  ): void {
+    this.Result = e.data;
     this.hasResult = true;
   }
 }

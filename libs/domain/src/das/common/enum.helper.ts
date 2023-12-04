@@ -19,6 +19,19 @@ export class EnumHelper {
     new Map();
 
   /**
+   *  Gets enum key from enum value
+   * @param enumObject
+   * @param enumValue
+   * @returns {string | undefined} The key of the enum value.
+   */
+  public static getEnumKeyByValue<T extends string>(
+    enumObject: Record<string, T>,
+    enumValue: T,
+  ): string | undefined {
+    return Object.keys(enumObject).find((key) => enumObject[key] === enumValue);
+  }
+
+  /**
    * Gets the description of an enum value.
    * @param {T} enumValue - The enum value.
    * @returns {string | null} The description of the enum value.

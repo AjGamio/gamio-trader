@@ -1,9 +1,12 @@
+import { Logger } from '@nestjs/common';
 import { TraderCommandType } from '../enums';
-// import { ResponseProcessor, ResponseEventArgs } from 'DAS.Trader.IntegrationClient.Response';
+import { ResponseProcessor } from '../processors/response.processor';
 import { BaseTcpCommand } from './base.command';
+import { ResponseEventArgs } from '../processors/response.event.args';
 
 export class LoginCommand extends BaseTcpCommand {
   Result: any;
+  private readonly logger: Logger;
   constructor(login: string, password: string, account: string) {
     super(
       TraderCommandType.LOGIN_COMMAND,
@@ -13,21 +16,26 @@ export class LoginCommand extends BaseTcpCommand {
       password,
       account,
     );
+    this.logger = new Logger(this.constructor.name);
   }
 
-  public override Subscribe(responseProcessor: any): void {
-    responseProcessor.loginResponse +=
-      this.responseProcessorLoginResponse.bind(this);
+  Subscribe(processor: ResponseProcessor): void {
+    processor.LoginResponse.on(
+      TraderCommandType.LOGIN_COMMAND,
+      this.responseProcessorOrderServerStatusResponse,
+    );
+  }
+  Unsubscribe(processor: ResponseProcessor): void {
+    processor.LoginResponse.off(
+      TraderCommandType.LOGIN_COMMAND,
+      this.responseProcessorOrderServerStatusResponse,
+    );
   }
 
-  private responseProcessorLoginResponse(sender: any, e: any): void {
-    this.Result =
-      e.parameters?.length === 1 ? e.parameters[0] : e.message || '';
+  private responseProcessorOrderServerStatusResponse(
+    e: ResponseEventArgs,
+  ): void {
+    this.Result = e.data;
     this.hasResult = true;
-  }
-
-  public override Unsubscribe(responseProcessor: any): void {
-    responseProcessor.loginResponse -=
-      this.responseProcessorLoginResponse.bind(this);
   }
 }

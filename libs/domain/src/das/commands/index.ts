@@ -4,4 +4,3 @@ export * from './echo.command';
 export * from './login.command';
 export * from './buyInPower.command';
 export * from './logout.command';
-export * from './order.server.status.command';

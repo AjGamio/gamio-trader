@@ -1,3 +1,5 @@
+import { TraderCommandType } from '../enums';
+
 export interface Trade {
   id: string;
   symb: string;
@@ -60,13 +62,30 @@ export interface OrderAction {
   notes: string;
 }
 
-export interface JsonData {
-  LOGIN: {
-    STATUS: string;
-    POS: Position[];
-    Order: Order[];
-    Trade: Trade[];
-    SLOrder: SLOrder[];
-    OrderAct: OrderAction[];
-  };
+export interface BuyingPower {
+  bp: number;
+  nbp: number;
 }
+
+export interface JsonData {
+  STATUS: string;
+  POS: Position[];
+  Order: Order[];
+  Trade: Trade[];
+  SLOrder: SLOrder[];
+  OrderAct: OrderAction[];
+  BP: BuyingPower[];
+  Clients: string[];
+  Extras: string[];
+}
+
+export interface CommandData {
+  commandType: TraderCommandType;
+  dataId: string;
+  data: JsonData;
+}
+
+export type CommandDictionary = Record<
+  string,
+  { commandType: TraderCommandType; emitted: boolean }
+>;

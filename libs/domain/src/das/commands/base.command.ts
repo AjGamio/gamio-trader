@@ -1,6 +1,7 @@
 import { EnumHelper } from '../common';
 import { TraderCommandType } from '../enums';
 import { ITcpCommand } from '../interfaces/iCommand';
+import { ResponseProcessor } from '../processors/response.processor';
 
 export abstract class BaseTcpCommand implements ITcpCommand {
   constructor(
@@ -12,9 +13,8 @@ export abstract class BaseTcpCommand implements ITcpCommand {
     this.name = EnumHelper.getEnumDescription(type);
     this.params = params;
   }
-
-  abstract Subscribe(responseProcessor: any): void;
-  abstract Unsubscribe(responseProcessor: any): void;
+  abstract Subscribe(processor: ResponseProcessor): void;
+  abstract Unsubscribe(processor: ResponseProcessor): void;
 
   abstract Result: any | null;
 

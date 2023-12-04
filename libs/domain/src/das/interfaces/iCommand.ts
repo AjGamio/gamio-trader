@@ -1,4 +1,5 @@
 import { TraderCommandType } from '../enums';
+import { ResponseProcessor } from '../processors/response.processor';
 
 export interface ITcpCommand {
   Type: TraderCommandType;
@@ -9,6 +10,6 @@ export interface ITcpCommand {
   WaitForResult: boolean;
   HasResult: boolean;
   Result: any | null;
-  Subscribe(responseProcessor: any): void;
-  Unsubscribe(responseProcessor: any): void;
+  Subscribe(processor: ResponseProcessor): void;
+  Unsubscribe(processor: ResponseProcessor): void;
 }
