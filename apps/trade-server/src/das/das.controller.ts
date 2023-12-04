@@ -47,9 +47,9 @@ export class DASController {
   })
   async login(@Body() credentials: AppLoginDto, @Res() res: Response) {
     const loginCommand = new LoginCommand(
-      EnvConfig.DAS.USERNAME,
-      EnvConfig.DAS.PASSWORD,
-      EnvConfig.DAS.ACCOUNT,
+      credentials.username,
+      credentials.password,
+      credentials.account,
     );
     this.logger.log(loginCommand.Name);
     this.dasService.enqueueCommand(loginCommand);
