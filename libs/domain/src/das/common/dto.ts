@@ -7,7 +7,14 @@ export interface LoginDto {
 // AppLoginDto.ts
 
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, Length, Matches, ValidationError, validateSync } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  Length,
+  Matches,
+  ValidationError,
+  validateSync,
+} from 'class-validator';
 
 export class AppLoginDto implements LoginDto {
   @ApiProperty({

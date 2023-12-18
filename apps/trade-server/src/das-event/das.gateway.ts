@@ -38,7 +38,7 @@ export class DasGateway
   handleConnection(client: Socket) {
     // Handle WebSocket connection
     this.dasService.client = client;
-    this.logger.log(`Client connected: ${client.id}`);
+    this.logger.log(`Client connected: ${this.dasService.client.id}`);
   }
 
   handleDisconnect(client: Socket) {

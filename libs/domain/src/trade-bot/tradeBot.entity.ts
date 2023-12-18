@@ -1,13 +1,3 @@
-// import { Schema, SchemaFactory } from '@nestjs/mongoose';
-// import { Document } from 'mongoose';
-
-// @Schema({
-//   collection: 'bots',
-// })
-// export class TradeBot extends Document {}
-
-// export const TradeBotSchema = SchemaFactory.createForClass(TradeBot);
-
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import {

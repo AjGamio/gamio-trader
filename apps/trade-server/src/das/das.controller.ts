@@ -17,9 +17,9 @@ import {
   LogoutCommand,
 } from 'gamio/domain/das/commands';
 import { DasService } from 'gamio/domain/das/das.service';
-import { EnvConfig } from '../config/env.config';
 import { AppLoginDto } from 'gamio/domain';
 import { POSRefreshCommand } from 'gamio/domain/das/commands/pos.refresh.command';
+import { EnvConfig } from '../config/env.config';
 
 @ApiTags('DAS')
 @Controller('das')
@@ -28,6 +28,11 @@ export class DASController {
 
   constructor(private readonly dasService: DasService) {
     this.logger = new Logger(this.constructor.name);
+    this.dasService.setupTradeClient({
+      username: EnvConfig.DAS.USERNAME,
+      password: EnvConfig.DAS.PASSWORD,
+      account: EnvConfig.DAS.ACCOUNT,
+    });
   }
 
   @Post('login')

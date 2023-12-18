@@ -8,7 +8,7 @@ export abstract class BaseTcpCommand implements ITcpCommand {
     protected type: TraderCommandType,
     protected waitForResult: boolean = false,
     protected hasResult: boolean = false,
-    ...params: string[]
+    ...params: [string, string, string, ...string[]] | string[]
   ) {
     this.name = EnumHelper.getEnumDescription(type);
     this.params = params;

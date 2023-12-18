@@ -1,4 +1,13 @@
+import { ITradeBot } from 'gamio/domain/trade-bot/itradeBot';
 import { TraderCommandType } from '../enums';
+import { ITickerData } from 'gamio/domain/polygon/interfaces/iTickerData';
+
+export enum OrderOrTradeType {
+  Bots = 'bots',
+  BotTrades = 'bot-trades',
+  Orders = 'orders',
+  Trades = 'trades',
+}
 
 export interface Trade {
   id: string;
@@ -77,15 +86,23 @@ export interface JsonData {
   BP: BuyingPower[];
   Clients: string[];
   Extras: string[];
+  OrderSending: any[];
 }
 
 export interface CommandData {
   commandType: TraderCommandType;
   dataId: string;
-  data: JsonData;
+  data: JsonData | string;
 }
 
 export type CommandDictionary = Record<
   string,
   { commandType: TraderCommandType; emitted: boolean }
 >;
+
+export interface FilteredTickersData {
+  bot: ITradeBot;
+  tickers: ITickerData[];
+  status: 'waiting' | 'processing' | 'processed' | 'empty';
+  processingDateTime?: { start: Date; finish: Date };
+}

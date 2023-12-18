@@ -1,8 +1,7 @@
 import { Module } from '@nestjs/common';
-import { DasService } from './das.service';
 
 @Module({
-  providers: [DasService],
-  exports: [DasService],
+  providers: [],
+  exports: [],
 })
-export class DasModule {}
+export class DasLibModule {}

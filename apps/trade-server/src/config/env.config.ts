@@ -14,6 +14,7 @@ export const EnvConfig = {
   JWT_SECRET: process.env.JWT_SECRET,
   APP_NAME: process.env.APP_NAME ?? 'Trading Project',
   ENVIRONMENT: Environment[process.env.NODE_ENV],
+  TICKER_ORDER_QUEUE_LIMIT: Number(process.env.TICKER_ORDER_QUEUE_LIMIT) ?? 10,
   DAS: {
     USERNAME: process.env.DAS_API_UN,
     PASSWORD: process.env.DAS_API_PW,

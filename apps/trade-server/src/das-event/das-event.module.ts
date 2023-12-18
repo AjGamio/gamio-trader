@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { DasGateway } from './das.gateway';
-import { DasService } from 'gamio/domain/das/das.service';
+import { DomainModule } from 'gamio/domain';
+import { SchedulerModule } from 'gamio/domain/scheduler/scheduler.module';
 
 @Module({
-  providers: [DasGateway, DasService],
-  exports: [DasGateway, DasService],
+  imports: [DomainModule, SchedulerModule],
+  providers: [DasGateway],
+  exports: [DasGateway],
 })
 export class DasEventModule {}

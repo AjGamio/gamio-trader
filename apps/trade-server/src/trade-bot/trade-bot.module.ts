@@ -8,7 +8,11 @@ import {
   TradeBot,
   TradeBotSchema,
 } from 'gamio/domain/trade-bot/tradeBot.entity';
-import { TradeBotOrder, TradeBotOrderSchema } from 'gamio/domain/trade-bot/tradeBotOder.entity';
+import {
+  TradeBotOrder,
+  TradeBotOrderSchema,
+} from 'gamio/domain/trade-bot/tradeBotOder.entity';
+import { SchedulerModule } from 'gamio/domain/scheduler/scheduler.module';
 
 @Module({
   imports: [
@@ -25,8 +29,9 @@ import { TradeBotOrder, TradeBotOrderSchema } from 'gamio/domain/trade-bot/trade
       { name: TradeBot.name, schema: TradeBotSchema },
       { name: TradeBotOrder.name, schema: TradeBotOrderSchema },
     ]),
+    SchedulerModule,
   ],
-  providers: [TradeBotsService],
+  providers: [],
   controllers: [TradeBotsController],
 })
 export class TradeBotModule {}

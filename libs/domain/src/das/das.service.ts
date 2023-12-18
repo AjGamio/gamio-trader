@@ -7,6 +7,12 @@ import { TraderCommandType } from './enums';
 import { Socket } from 'socket.io';
 import { EnvConfig } from 'apps/trade-server/src/config/env.config';
 import { CommandData, CommandDictionary } from './interfaces/iData';
+import {
+  ITickerData,
+  iTickerAverages,
+} from '../polygon/interfaces/iTickerData';
+import { TradeBotsService } from '../trade-bot/tradebot.service';
+import { LoginDto } from './common';
 
 @Injectable()
 export class DasService {
@@ -18,10 +24,15 @@ export class DasService {
   private commandQueue: Array<ITcpCommand> = [];
   private isProcessingQueue: boolean = false;
   private logger = new Logger(DasService.name);
-
-  constructor() {
-    this.initTradeClient();
+  public loginDto: LoginDto;
+  constructor(private readonly tradeBotService: TradeBotsService) {
     this.traderClientConnectionStatus = 'Connected';
+    this.logger.log(`Connected client with id: ${this.client?.id}`);
+  }
+
+  public setupTradeClient(loginDto: LoginDto) {
+    this.loginDto = loginDto;
+    this.initTradeClient();
   }
 
   private async processQueue(): Promise<void> {
@@ -62,6 +73,8 @@ export class DasService {
 
   public async initTradeClient() {
     this.traderClient = new TraderClient(
+      this.tradeBotService,
+      this.loginDto,
       EnvConfig.DAS.SERVER.ADDRESS,
       EnvConfig.DAS.SERVER.PORT,
     );
@@ -124,6 +137,18 @@ export class DasService {
     // Start processing the queue if not already processing
     if (!this.isProcessingQueue) {
       this.processQueue();
+    }
+  }
+
+  public async emit(
+    eventName: string,
+    data: iTickerAverages | string | number | ITickerData[],
+  ) {
+    if (EnvConfig.ENABLE_DEBUG && this.client?.id) {
+      this.logger.log(
+        `emitting event to client with id: ${this.client?.id}, event-${eventName}`,
+      );
+      this.client?.emit(eventName, data);
     }
   }
 }

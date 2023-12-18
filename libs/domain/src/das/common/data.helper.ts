@@ -18,6 +18,7 @@ const convertDataToJSON = (dataString: string): JsonData => {
     '%TRADE': 'Trade',
     '%SLOrder': 'SLOrder',
     '%OrderAct': 'OrderAct',
+    '#OrderSending': 'OrderSending',
     '#buyingpower': 'BP',
     BP: 'BP',
     Client: 'Clients',
@@ -34,6 +35,7 @@ const convertDataToJSON = (dataString: string): JsonData => {
     BP: [],
     Clients: [],
     Extras: [],
+    OrderSending: [],
   };
   const lines = dataString.split('\n');
 
@@ -74,12 +76,14 @@ const convertDataToJSON = (dataString: string): JsonData => {
               Object.assign(obj, slOrderData);
             }
             break;
+          case 'OrderSending':
           case 'OrderAct':
             const orderActData = convertOrderActDataToJSON(line);
             if (orderActData) {
               Object.assign(obj, orderActData);
             }
             break;
+
           case 'BP':
             const buyingPOwerData = convertBuyingPowerDataToJSON(line);
             if (buyingPOwerData) {

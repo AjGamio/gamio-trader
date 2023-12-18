@@ -5,13 +5,17 @@ import { JsonData } from '../interfaces/iData';
 
 export class ResponseEventArgs {
   public readonly correlationId: any;
-  public readonly data: JsonData;
+  public readonly data: JsonData | string;
+  public readonly isLoggedIn: boolean;
   constructor(
     public commandType: TraderCommandType,
     public message: string | null = null,
-    // public parameters: string[] | null = null,
   ) {
     this.correlationId = uuidv4();
-    this.data = processSocketData(this.message);
+    this.data =
+      this.message === 'Not login'
+        ? this.message
+        : processSocketData(this.message);
+    this.isLoggedIn = this.data !== 'Not login';
   }
 }

@@ -20,6 +20,7 @@ export class BuyInCommand extends BaseTcpCommand {
       this.responseProcessorOrderServerStatusResponse,
     );
   }
+
   Unsubscribe(processor: ResponseProcessor): void {
     processor.BuyingPowerResponse.off(
       TraderCommandType.GET_BUYING_POWER_COMMAND,

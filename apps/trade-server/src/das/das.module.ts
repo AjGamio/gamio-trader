@@ -4,6 +4,8 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { DASController } from './das.controller';
 import { DasEventModule } from '../das-event/das-event.module';
 import { EnvConfig } from '../config/env.config';
+import { SchedulerModule } from 'gamio/domain/scheduler/scheduler.module';
+
 
 @Module({
   imports: [
@@ -17,6 +19,7 @@ import { EnvConfig } from '../config/env.config';
       },
     ]),
     DasEventModule,
+    SchedulerModule,
   ],
   providers: [],
   controllers: [DASController],
