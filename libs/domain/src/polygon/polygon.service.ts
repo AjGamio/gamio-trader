@@ -1,7 +1,7 @@
 // src/polygon-api/polygon-api.service.ts
 
 import { Injectable, Logger } from '@nestjs/common';
-import { EnvConfig } from 'apps/trade-server/src/config/env.config';
+import { EnvConfig } from '../config/env.config';
 import axios from 'axios';
 import {
   ITickerData,

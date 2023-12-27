@@ -4,7 +4,6 @@ import { Logger } from '@nestjs/common';
 import { ResponseEventArgs } from './response.event.args';
 import { GenericEventEmitter } from './event.processor';
 import { TraderCommandType } from '../enums';
-import { EnvConfig } from 'apps/trade-server/src/config/env.config';
 import { CommandData, JsonData, Order, Trade } from '../interfaces/iData';
 import { TradeBotsService } from 'gamio/domain/trade-bot/tradebot.service';
 import {
@@ -41,6 +40,11 @@ class ResponseProcessor extends EventEmitter {
     TraderCommandType.NEWORDER_COMMAND
   > = new EventEmitter();
 
+  public readonly POSRefreshResponse: GenericEventEmitter<
+    ResponseEventArgs,
+    TraderCommandType.POSREFRESH_COMMAND
+  > = new EventEmitter();
+
   constructor(private readonly tradeBotService: TradeBotsService) {
     super();
     this.logger = new Logger(this.constructor.name);
@@ -53,11 +57,11 @@ class ResponseProcessor extends EventEmitter {
     return new Promise<void>((resolve, reject) => {
       const onData = (data: Buffer) => {
         const receivedData = data.toString();
-        if (EnvConfig.ENABLE_DEBUG) {
-          this.logger.log(
-            `commandType: ${commandType}, receivedData:${receivedData}`,
-          );
-        }
+        // if (EnvConfig.ENABLE_DEBUG) {
+        //   this.logger.log(
+        //     `commandType: ${commandType}, receivedData:${receivedData}`,
+        //   );
+        // }
 
         // Emit events based on command type
         this.emitEvent(
@@ -80,7 +84,7 @@ class ResponseProcessor extends EventEmitter {
       };
 
       const onClose = () => {
-        console.log('Connection closed');
+        this.logger.warn('Connection closed');
         this.stopListening();
         resolve();
       };
@@ -101,7 +105,7 @@ class ResponseProcessor extends EventEmitter {
 
     const { Order: orders, Trade: trades } = data.data as JsonData;
     orders.forEach((o: Order) => {
-      this.logger.verbose(`order-${JSON.stringify(o)}`);
+      // this.logger.verbose(`order-${JSON.stringify(o)}`);
       this.tradeBotService.updateTradeBotOrder(
         o.token,
         o.id,
@@ -127,7 +131,7 @@ class ResponseProcessor extends EventEmitter {
       this.tradeBotService.upsertBotOrder(trade as TradeOrder);
     });
     trades.forEach((t: Trade) => {
-      this.logger.verbose(`trade-${JSON.stringify(t)}`);
+      // this.logger.verbose(`trade-${JSON.stringify(t)}`);
       const trade: Partial<TradeOrder> = {
         id: t.id,
         token: t.orderid.toFixed(),

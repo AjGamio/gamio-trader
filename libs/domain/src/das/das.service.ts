@@ -5,7 +5,7 @@ import { TraderClient } from './client/trader-client';
 import { ITcpCommand } from './interfaces/iCommand';
 import { TraderCommandType } from './enums';
 import { Socket } from 'socket.io';
-import { EnvConfig } from 'apps/trade-server/src/config/env.config';
+import { EnvConfig } from '../config/env.config';
 import { CommandData, CommandDictionary } from './interfaces/iData';
 import {
   ITickerData,
@@ -73,12 +73,16 @@ export class DasService {
 
   public async initTradeClient() {
     this.traderClient = new TraderClient(
-      this.tradeBotService,
       this.loginDto,
       EnvConfig.DAS.SERVER.ADDRESS,
       EnvConfig.DAS.SERVER.PORT,
     );
     await this.traderClient.connectAsync();
+    this.traderClient.on('trade-data', (data) => {
+      if (this.client && this.client.id) {
+        this.client.emit('trade-data', data);
+      }
+    });
   }
 
   private setupEventHandlers(commandType: TraderCommandType) {
@@ -95,7 +99,7 @@ export class DasService {
 
   private handleDataEmit(data: CommandData) {
     if (EnvConfig.ENABLE_DEBUG) {
-      this.logger.log('Event Data:', data);
+      // this.logger.log('Event Data:', data);
     }
     if (this.client) {
       this.client.emit('onDasTraderEmit', data);

@@ -1,5 +1,5 @@
 import * as dotenv from 'dotenv';
-import { Environment } from 'gamio/domain/das/enums/environment';
+import { Environment } from '../das/enums/environment';
 
 dotenv.config({});
 
@@ -12,6 +12,10 @@ export const EnvConfig = {
   SOCKET_PORT: process.env.SOCKET_PORT ?? 30005,
   SECRET_KEY: process.env.SECRET,
   JWT_SECRET: process.env.JWT_SECRET,
+  ENCRYPTION: {
+    KEY: process.env.ENCRYPTION_KEY,
+    VI: process.env.ENCRYPTION_VI,
+  },
   APP_NAME: process.env.APP_NAME ?? 'Trading Project',
   ENVIRONMENT: Environment[process.env.NODE_ENV],
   TICKER_ORDER_QUEUE_LIMIT: Number(process.env.TICKER_ORDER_QUEUE_LIMIT) ?? 10,
@@ -23,5 +27,9 @@ export const EnvConfig = {
       ADDRESS: process.env.DAS_SERVER_ADDRESS,
       PORT: Number(process.env.DAS_SERVER_PORT),
     },
+  },
+  SWAGGER: {
+    USER: process.env.SWAGGER_USER,
+    PASSWORD: process.env.SWAGGER_USER_PASSWORD,
   },
 };

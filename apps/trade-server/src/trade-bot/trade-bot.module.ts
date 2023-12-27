@@ -1,8 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TradeBotsController } from './trade.bot.controller';
-import { TradeBotsService } from 'gamio/domain/trade-bot/tradebot.service';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { EnvConfig } from '../config/env.config';
 import { MongooseModule } from '@nestjs/mongoose';
 import {
   TradeBot,
@@ -13,9 +11,14 @@ import {
   TradeBotOrderSchema,
 } from 'gamio/domain/trade-bot/tradeBotOder.entity';
 import { SchedulerModule } from 'gamio/domain/scheduler/scheduler.module';
+import { EnvConfig } from 'gamio/domain/config/env.config';
 
+/**
+ * Module for managing trade bots.
+ */
 @Module({
   imports: [
+    // Register microservices client for TRADE_BOT_SERVICE
     ClientsModule.register([
       {
         name: 'TRADE_BOT_SERVICE',
@@ -25,13 +28,15 @@ import { SchedulerModule } from 'gamio/domain/scheduler/scheduler.module';
         },
       },
     ]),
+    // Integrate with the Mongoose module for database operations
     MongooseModule.forFeature([
       { name: TradeBot.name, schema: TradeBotSchema },
       { name: TradeBotOrder.name, schema: TradeBotOrderSchema },
     ]),
+    // Include the SchedulerModule for scheduling tasks
     SchedulerModule,
   ],
-  providers: [],
-  controllers: [TradeBotsController],
+  providers: [], // No additional providers for now
+  controllers: [TradeBotsController], // Include the TradeBotsController in the module
 })
 export class TradeBotModule {}

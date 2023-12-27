@@ -12,7 +12,7 @@ import {
   calculateVolumeChange,
 } from '../das/common/trade.helper';
 import { FilteredTickersData } from '../das/interfaces/iData';
-import { EnvConfig } from 'apps/trade-server/src/config/env.config';
+import { EnvConfig } from '../config/env.config';
 
 @Injectable()
 export class TradeService {

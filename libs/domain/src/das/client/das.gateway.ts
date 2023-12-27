@@ -8,8 +8,8 @@ import {
 } from '@nestjs/websockets';
 import { DasService } from 'gamio/domain/das/das.service';
 import { Server, Socket } from 'socket.io';
+import { EnvConfig } from '../config/env.config';
 import { LoginCommand, LogoutCommand } from 'gamio/domain/das/commands';
-import { EnvConfig } from 'gamio/domain/config/env.config';
 
 /**
  * WebSocket gateway for handling DAS (Direct Access Service) events.
@@ -65,8 +65,6 @@ export class DasGateway
    * @param client - The connected WebSocket client
    */
   handleConnection(client: Socket) {
-    const token = client.handshake.auth;
-    console.log("🚀 ~ file: das.gateway.ts:69 ~ handleConnection ~ token:", token)
     this.dasService.client = client;
     this.logger.log(`Client connected: ${this.dasService.client.id}`);
   }

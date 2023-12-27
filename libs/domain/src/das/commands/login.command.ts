@@ -10,7 +10,7 @@ export class LoginCommand extends BaseTcpCommand {
   constructor(login: string, password: string, account: string) {
     super(
       TraderCommandType.LOGIN_COMMAND,
-      true,
+      false,
       false,
       login,
       password,

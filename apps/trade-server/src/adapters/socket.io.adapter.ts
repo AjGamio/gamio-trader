@@ -3,8 +3,7 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 import * as socketIo from 'socket.io';
 import { ServerOptions } from 'socket.io';
 import { INestApplication, Logger } from '@nestjs/common';
-import { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
-import { EnvConfig } from '../config/env.config';
+import { EnvConfig } from 'gamio/domain/config/env.config';
 
 export class SocketIoAdapter extends IoAdapter {
   createIOServer(
@@ -20,7 +19,7 @@ export class SocketIoAdapter extends IoAdapter {
         : this.httpServer;
 
     const corsOptions = {
-      origin: EnvConfig.ALLOWED_ORIGIN, // Replace with your client's URL
+      origin: EnvConfig.ALLOWED_ORIGIN,
       methods: ['GET', 'POST', 'PUT', 'DELETE'],
       allowedHeaders: ['Content-Type'],
     };

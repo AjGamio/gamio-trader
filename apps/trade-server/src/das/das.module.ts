@@ -1,14 +1,18 @@
-// src/das/das.module.ts
 import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { DASController } from './das.controller';
 import { DasEventModule } from '../das-event/das-event.module';
-import { EnvConfig } from '../config/env.config';
 import { SchedulerModule } from 'gamio/domain/scheduler/scheduler.module';
+import { JwtModule } from '@nestjs/jwt';
+import { AuthModule } from '../auth/auth.module';
+import { EnvConfig } from 'gamio/domain/config/env.config';
 
-
+/**
+ * Module for the DAS (Direct Access Service) functionality.
+ */
 @Module({
   imports: [
+    // Register microservices client for DAS_SERVICE
     ClientsModule.register([
       {
         name: 'DAS_SERVICE',
@@ -18,10 +22,15 @@ import { SchedulerModule } from 'gamio/domain/scheduler/scheduler.module';
         },
       },
     ]),
+    JwtModule.register({
+      secret: EnvConfig.JWT_SECRET,
+      signOptions: { expiresIn: '1d' }, // Adjust the expiration as needed
+    }),
     DasEventModule,
     SchedulerModule,
+    AuthModule,
   ],
-  providers: [],
-  controllers: [DASController],
+  providers: [], // No additional providers for now
+  controllers: [DASController], // Include the DASController in the module
 })
 export class DasModule {}

@@ -15,14 +15,14 @@ export class POSRefreshCommand extends BaseTcpCommand {
   }
 
   Subscribe(processor: ResponseProcessor): void {
-    processor.EchoResponse.on(
-      TraderCommandType.ECHO_COMMAND,
+    processor.POSRefreshResponse.on(
+      TraderCommandType.POSREFRESH_COMMAND,
       this.responseProcessorOrderServerStatusResponse,
     );
   }
   Unsubscribe(processor: ResponseProcessor): void {
-    processor.EchoResponse.off(
-      TraderCommandType.ECHO_COMMAND,
+    processor.POSRefreshResponse.off(
+      TraderCommandType.POSREFRESH_COMMAND,
       this.responseProcessorOrderServerStatusResponse,
     );
   }

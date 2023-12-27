@@ -22,7 +22,7 @@ import { FilteredTickersData } from '../das/interfaces/iData';
 import { MarketOrderCommand } from '../das/commands/market.order.command';
 import { OrderAction, TimeInForce } from '../das/enums';
 import { LimitOrderCommand } from '../das/commands/limit.order.command';
-import { EnvConfig } from 'apps/trade-server/src/config/env.config';
+import { EnvConfig } from '../config/env.config';
 
 @Injectable()
 export class SchedulerService {
@@ -59,7 +59,7 @@ export class SchedulerService {
       );
     }
     if (this.dasService.client) {
-      this.dasService.client.emit('ping', 'Executing every minute');
+      this.dasService.client.emit('ping', 'Executing every 5 minute');
       this.dasService.client.emit(
         'filteredBots',
         filteredBots.map((b) => b.name),
@@ -76,17 +76,17 @@ export class SchedulerService {
     filteredTickers.map((t: FilteredTickersData) => {
       if (t.status === 'waiting') {
         t.processingDateTime = { start: new Date(), finish: new Date() };
-        this.logger.verbose(
-          `Processing filtered tickers data for bot- ${t.bot.name} [${t.bot._id}] at - ${t.processingDateTime.start}`,
-        );
+        const tickerMsg = `Processing filtered tickers data for bot- ${t.bot.name} [${t.bot._id}] at - ${t.processingDateTime.start}`;
+        this.logger.verbose(tickerMsg);
+        this.dasService.emit('ticker-info', tickerMsg);
         const queuedTickers = t.tickers.slice(
           EnvConfig.TICKER_ORDER_QUEUE_LIMIT,
         );
-        this.logger.log(
-          `Creating new orders for ${queuedTickers.map(
-            (t) => t.ticker,
-          )} tickers`,
-        );
+        const tickerOrderMsg = `Creating new orders for ${queuedTickers.map(
+          (t) => t.ticker,
+        )} tickers`;
+        this.logger.log(tickerOrderMsg);
+        this.dasService.emit('ticker-info', tickerOrderMsg);
         queuedTickers.map(async (tk: ITickerData) => {
           const tickerMarketCap = this.tickerData.find((td: ITickerData) => {
             return td.ticker === tk.ticker;
@@ -162,9 +162,11 @@ export class SchedulerService {
             const rawCommand = `TRADE BOT ORDER COMMAND- ${tradeBotOrder.rawCommand}`;
             this.logger.verbose(rawCommand);
             await this.dasService.sendCommandToServer(orderCommand);
-            this.dasService.emit('order', rawCommand);
+            this.dasService.emit('ticker-info', rawCommand);
           } else {
-            this.logger.warn(`No market cap data found for ${tk.ticker}`);
+            const tickerMsg = `No market cap data found for ${tk.ticker}`;
+            this.logger.warn(tickerMsg);
+            this.dasService.emit('ticker-info', tickerMsg);
           }
         });
       }
@@ -180,22 +182,24 @@ export class SchedulerService {
   }
 
   async addBotOrder(order: TradeBotOrder) {
+    let tickerOrderMsg = '';
     try {
       const result = await this.tradeBotOrderModel.collection.insertOne(order);
+
       if (result.acknowledged) {
-        this.logger.log(
-          `Added new order for bot - ${order.botId} for symbol- ${order.symbol}`,
-        );
+        tickerOrderMsg = `Added new order for bot - ${order.botId} for symbol- ${order.symbol}`;
+        this.logger.log(tickerOrderMsg);
       } else {
-        this.logger.warn(
-          `Unable to add new order for bot - ${order.botId} for symbol- ${order.symbol}`,
-        );
+        tickerOrderMsg = `Unable to add new order for bot - ${order.botId} for symbol- ${order.symbol}`;
+        this.logger.warn(tickerOrderMsg);
+      }
+      if (tickerOrderMsg.length > 0) {
+        this.dasService.emit('ticker-info', tickerOrderMsg);
       }
       return order;
     } catch (err) {
-      this.logger.error(
-        `Unable to add new order for bot - ${order.botId} for symbol- ${order.symbol} due to ${err.message}`,
-      );
+      tickerOrderMsg = `Unable to add new order for bot - ${order.botId} for symbol- ${order.symbol} due to ${err.message}`;
+      this.logger.error(tickerOrderMsg);
     }
   }
 }
