@@ -9,6 +9,9 @@ import { LoginCommand } from '../commands';
 import { LoginDto } from '../common';
 import { ResponseEventArgs } from '../processors/response.event.args';
 import { EnvConfig } from '../../config/env.config';
+import { JsonData } from '../interfaces/iData';
+import { set } from 'lodash';
+import { PolygonApiService } from 'gamio/domain/polygon/polygon.service';
 
 @Injectable()
 export class TraderClient extends EventEmitter implements OnModuleDestroy {
@@ -21,6 +24,7 @@ export class TraderClient extends EventEmitter implements OnModuleDestroy {
   private _timeOut: Date;
   private logger: Logger;
   constructor(
+    private readonly polygonService: PolygonApiService,
     private readonly loginDto: LoginDto,
     ipAddress: string,
     port: number,
@@ -55,7 +59,7 @@ export class TraderClient extends EventEmitter implements OnModuleDestroy {
         this.logger.warn('Error:', err.message);
         reject(err);
       });
-      this._tcpClient.on('data', (data) => {
+      this._tcpClient.on('data', async (data) => {
         const eventData = new ResponseEventArgs(
           TraderCommandType.None,
           data.toString(),
@@ -63,7 +67,28 @@ export class TraderClient extends EventEmitter implements OnModuleDestroy {
         if (EnvConfig.ENABLE_DEBUG) {
           this.logger.log(eventData.data);
         }
-        this.emit('trade-data', eventData.data);
+        const jsonData = eventData.data as JsonData;
+        const updatedData = await Promise.all(
+          jsonData.POS.map(async (s) => {
+            const {
+              name,
+              market,
+              primary_exchange,
+              currency_name,
+              sic_description,
+            } = await this.polygonService.getStockDetails(s.symb);
+            return {
+              ...s,
+              name,
+              market,
+              primary_exchange,
+              currency_name,
+              sic_description,
+            };
+          }),
+        );
+        set(jsonData, 'POS', updatedData);
+        this.emit('trade-data', jsonData);
       });
     });
   }

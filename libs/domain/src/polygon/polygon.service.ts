@@ -14,6 +14,9 @@ import {
   calculateAverage,
   calculateAverageWithMinMax,
 } from '../das/common/trade.helper';
+import { Stock } from './stock.entity';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 
 @Injectable()
 export class PolygonApiService {
@@ -22,19 +25,26 @@ export class PolygonApiService {
   private readonly baseUrl = 'https://api.polygon.io'; // Replace with the actual Polygon API base URL
   private readonly apiKey = EnvConfig.POLYGON_API_KEY; // Replace with your actual Polygon API key
 
-  constructor() {
+  constructor(
+    @InjectModel(Stock.name)
+    private readonly stockModel: Model<Stock>,
+  ) {
     this.logger = new Logger(PolygonApiService.name);
   }
 
-  async getPolygonData(symbol: string): Promise<any> {
-    const endpoint = `/stocks/${symbol}/details`; // Replace with the actual endpoint
+  async getPolygonData(symbol: string): Promise<Stock> {
+    const endpoint = `/v3/reference/tickers/${symbol}`; // Replace with the actual endpoint
 
     try {
       const response = await axios.get(`${this.baseUrl}${endpoint}`, {
         headers: { Authorization: `Bearer ${this.apiKey}` },
       });
 
-      return response.data;
+      const data = {
+        request_id: response.data.request_id,
+        ...response.data.results,
+      };
+      return data;
     } catch (error) {
       // Handle errors
       console.error(
@@ -139,5 +149,40 @@ export class PolygonApiService {
         min: calculateAverage(tickerData, 'min.c'),
       },
     };
+  }
+
+  async getStockDetails(ticker: string): Promise<Stock> {
+    const tickerDetails = await this.stockModel.findOne({
+      ticker,
+    });
+
+    if (!tickerDetails) {
+      // Fetch details from Polygon service
+      const fetchedTickerDetails = await this.getPolygonData(ticker);
+
+      if (fetchedTickerDetails) {
+        // Insert the fetched details into the database
+        fetchedTickerDetails.createdAt = new Date().toISOString();
+        fetchedTickerDetails.updatedAt = new Date().toISOString();
+        const result = await this.stockModel.findOneAndUpdate(
+          { ticker },
+          fetchedTickerDetails,
+          { upsert: true, new: true, setDefaultsOnInsert: true },
+        );
+
+        if (!result._id) {
+          this.logger.warn(
+            `Failed to insert new stock - ${fetchedTickerDetails.ticker}`,
+          );
+        }
+      }
+      return fetchedTickerDetails;
+    } else {
+      // Log a message indicating that the stock was found in the database
+      this.logger.log(
+        `Stock already exists in the database - ${tickerDetails.ticker}`,
+      );
+    }
+    return tickerDetails;
   }
 }

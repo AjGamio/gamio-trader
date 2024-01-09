@@ -11,8 +11,8 @@ import {
   ITickerData,
   iTickerAverages,
 } from '../polygon/interfaces/iTickerData';
-import { TradeBotsService } from '../trade-bot/tradebot.service';
 import { LoginDto } from './common';
+import { PolygonApiService } from '../polygon/polygon.service';
 
 @Injectable()
 export class DasService {
@@ -25,7 +25,7 @@ export class DasService {
   private isProcessingQueue: boolean = false;
   private logger = new Logger(DasService.name);
   public loginDto: LoginDto;
-  constructor(private readonly tradeBotService: TradeBotsService) {
+  constructor(private readonly polygonService: PolygonApiService) {
     this.traderClientConnectionStatus = 'Connected';
     this.logger.log(`Connected client with id: ${this.client?.id}`);
   }
@@ -73,6 +73,7 @@ export class DasService {
 
   public async initTradeClient() {
     this.traderClient = new TraderClient(
+      this.polygonService,
       this.loginDto,
       EnvConfig.DAS.SERVER.ADDRESS,
       EnvConfig.DAS.SERVER.PORT,
