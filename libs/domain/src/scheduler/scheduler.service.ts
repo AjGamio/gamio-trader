@@ -79,9 +79,8 @@ export class SchedulerService {
         const tickerMsg = `Processing filtered tickers data for bot- ${t.bot.name} [${t.bot._id}] at - ${t.processingDateTime.start}`;
         this.logger.verbose(tickerMsg);
         this.dasService.emit('ticker-info', tickerMsg);
-        const queuedTickers = t.tickers.slice(
-          EnvConfig.TICKER_ORDER_QUEUE_LIMIT,
-        );
+        const limit = EnvConfig.TICKER_ORDER_QUEUE_LIMIT;
+        const queuedTickers = t.tickers.slice(0, limit);
         const tickerOrderMsg = `Creating new orders for ${queuedTickers.map(
           (t) => t.ticker,
         )} tickers`;

@@ -179,9 +179,9 @@ export class PolygonApiService {
       return fetchedTickerDetails;
     } else {
       // Log a message indicating that the stock was found in the database
-      this.logger.log(
-        `Stock already exists in the database - ${tickerDetails.ticker}`,
-      );
+      // this.logger.log(
+      //   `Stock already exists in the database - ${tickerDetails.ticker}`,
+      // );
     }
     return tickerDetails;
   }

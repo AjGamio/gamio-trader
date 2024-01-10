@@ -230,7 +230,7 @@ export class TradeService {
         if (
           rsi &&
           rsi.status &&
-          rsi.results.values.length > 0 &&
+          rsi.results.values?.length > 0 &&
           rsi.results.values[0]?.value <= criteria.rsi
         ) {
           set(ticker, 'rsi', rsi.results.values[0]?.value);
