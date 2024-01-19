@@ -129,7 +129,7 @@ export class SchedulerService {
               status: TradeStatus.PENDING,
               message: '',
               rawCommand: '',
-              token: generateNewOrderToken(),
+              token: generateNewOrderToken().toString(),
             };
 
             const orderCommand =

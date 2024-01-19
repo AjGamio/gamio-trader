@@ -2,6 +2,7 @@ import {
   AverageWithMinMax,
   ITickerData,
 } from 'gamio/domain/polygon/interfaces/iTickerData';
+import { TradeStatus } from 'gamio/domain/trade-bot/tradeBotOder.entity';
 import { get } from 'lodash';
 
 export const calculateVolumeChange = (aggregates: number[]) => {
@@ -68,4 +69,18 @@ export function calculateMinMax(
 export function generateNewOrderToken(): number {
   // Generate a random number between 100,000 (inclusive) and 999,999 (inclusive)
   return Math.floor(Math.random() * (999999 - 100000 + 1)) + 100000;
+}
+
+/**
+ * Get the enum value for a given string value.
+ *
+ * @param {string} stringValue - The string value to look up.
+ * @returns {TradeStatus | undefined} - The corresponding enum value or undefined if not found.
+ */
+export function getTradeStatusFromString(
+  stringValue: string,
+): TradeStatus | undefined {
+  return Object.values(TradeStatus).find(
+    (enumValue) => enumValue === stringValue,
+  ) as TradeStatus | undefined;
 }

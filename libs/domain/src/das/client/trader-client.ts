@@ -18,6 +18,7 @@ import {
 } from 'gamio/domain/trade-bot/tradeBotOder.entity';
 import { TradeOrder } from 'gamio/domain/trade-bot/tradeOrder.entity';
 import { EnvConfig } from 'gamio/domain/config/env.config';
+import { getTradeStatusFromString } from '../common/trade.helper';
 
 @Injectable()
 export class TraderClient extends EventEmitter implements OnModuleDestroy {
@@ -100,11 +101,8 @@ export class TraderClient extends EventEmitter implements OnModuleDestroy {
         const { Order: orders, Trade: trades } = jsonData;
         orders.forEach((o: Order) => {
           // this.logger.verbose(`order-${JSON.stringify(o)}`);
-          this.tradeBotService.updateTradeBotOrder(
-            o.token,
-            o.id,
-            TradeStatus[o.status],
-          );
+          const status = getTradeStatusFromString(o.status);
+          this.tradeBotService.updateTradeBotOrder(o.token, o.id, status);
           const trade: Partial<TradeOrder> = {
             id: o.id,
             token: o.token,

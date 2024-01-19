@@ -231,14 +231,14 @@ export class DASController {
         status: TradeStatus.PENDING,
         message: '',
         rawCommand: '',
-        token: generateNewOrderToken(),
+        token: generateNewOrderToken().toString(),
       };
       await this.dasService.addBotOrder(
         tradeBotOrder as unknown as TradeBotOrder,
       );
       this.dasService.enqueueCommand(
         new MarketOrderCommand(
-          generateNewOrderToken().toString(),
+          tradeBotOrder.token.toString(),
           OrderAction.Sell,
           s.symbol,
           'SMAT',

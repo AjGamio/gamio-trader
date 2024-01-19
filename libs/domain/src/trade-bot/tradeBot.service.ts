@@ -170,36 +170,40 @@ export class TradeBotsService {
     status: TradeStatus,
   ) {
     try {
-      const tradeBotOrder = await this.tradeBotOrderModel.collection.findOne({
-        token,
-      });
-      if (!isNil(tradeBotOrder)) {
-        const updated = await this.tradeBotOrderModel.collection.updateOne(
-          { _id: tradeBotOrder._id },
+      const tradeBotOrderUpdated =
+        await this.tradeBotOrderModel.collection.updateOne(
           {
-            status,
-            tradeNumber,
-            timeOfTrade: new Date(),
-            updatedAt: new Date(),
-            type: TradeType.TRADE,
+            token,
+          },
+          {
+            $set: {
+              status,
+              tradeNumber,
+              timeOfTrade: new Date(),
+              updatedAt: new Date(),
+              type: TradeType.TRADE,
+            },
           },
         );
-        if (
-          (!isNil(updated) && updated.acknowledged && updated.matchedCount > 0,
-          updated.modifiedCount > 0)
-        ) {
-          this.logger.log(
-            `Updated order for token - ${token} with tradeNumber- ${tradeNumber} & status: ${status}`,
-          );
-        } else {
-          this.logger.warn(
-            `Unable to update order for token - ${token} with tradeNumber- ${tradeNumber} & status: ${status}`,
-          );
-        }
+
+      if (
+        !isNil(tradeBotOrderUpdated) &&
+        tradeBotOrderUpdated.acknowledged &&
+        tradeBotOrderUpdated.matchedCount > 0 &&
+        tradeBotOrderUpdated.modifiedCount > 0
+      ) {
+        this.logger.log(
+          `Updated order for token - ${token} with tradeNumber- ${tradeNumber} & status: ${status}`,
+        );
+      } else {
+        this.logger.warn(
+          `Unable to update order for token - ${token} with tradeNumber- ${tradeNumber} & status: ${status}`,
+        );
       }
     } catch (err) {
       this.logger.error(
-        `Unable to updates order for token - ${token} with tradeNumber- ${tradeNumber} & status: ${status}`,
+        `Unable to update order for token - ${token} with tradeNumber- ${tradeNumber} & status: ${status}`,
+        err,
       );
     }
   }
