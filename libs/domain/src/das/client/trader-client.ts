@@ -8,10 +8,16 @@ import { TraderCommandType } from '../enums';
 import { LoginCommand } from '../commands';
 import { LoginDto } from '../common';
 import { ResponseEventArgs } from '../processors/response.event.args';
-import { EnvConfig } from '../../config/env.config';
-import { JsonData } from '../interfaces/iData';
+import { JsonData, Order, Trade } from '../interfaces/iData';
 import { set } from 'lodash';
 import { PolygonApiService } from 'gamio/domain/polygon/polygon.service';
+import { TradeBotsService } from 'gamio/domain/trade-bot/tradebot.service';
+import {
+  TradeStatus,
+  TradeType,
+} from 'gamio/domain/trade-bot/tradeBotOder.entity';
+import { TradeOrder } from 'gamio/domain/trade-bot/tradeOrder.entity';
+import { EnvConfig } from 'gamio/domain/config/env.config';
 
 @Injectable()
 export class TraderClient extends EventEmitter implements OnModuleDestroy {
@@ -25,6 +31,7 @@ export class TraderClient extends EventEmitter implements OnModuleDestroy {
   private logger: Logger;
   constructor(
     private readonly polygonService: PolygonApiService,
+    private readonly tradeBotService: TradeBotsService,
     private readonly loginDto: LoginDto,
     ipAddress: string,
     port: number,
@@ -89,6 +96,54 @@ export class TraderClient extends EventEmitter implements OnModuleDestroy {
         );
         set(jsonData, 'POS', updatedData);
         this.emit('trade-data', jsonData);
+
+        const { Order: orders, Trade: trades } = jsonData;
+        orders.forEach((o: Order) => {
+          // this.logger.verbose(`order-${JSON.stringify(o)}`);
+          this.tradeBotService.updateTradeBotOrder(
+            o.token,
+            o.id,
+            TradeStatus[o.status],
+          );
+          const trade: Partial<TradeOrder> = {
+            id: o.id,
+            token: o.token,
+            symb: o.symb,
+            bs: o['b/s'],
+            mktLmt: o['mkt/lmt'],
+            qty: isNaN(o.qty) ? 0 : Number(o.qty),
+            lvqty: isNaN(o.lvqty) ? 0 : Number(o.lvqty),
+            cxlqty: isNaN(o.cxlqty) ? 0 : Number(o.cxlqty),
+            price: isNaN(o.price) ? 0 : Number(o.price),
+            route: o.route,
+            status: o.status,
+            time: o.time,
+            type: TradeType.ORDER,
+            // createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          this.tradeBotService.upsertBotOrder(trade as TradeOrder);
+        });
+        trades.forEach((t: Trade) => {
+          // this.logger.verbose(`trade-${JSON.stringify(t)}`);
+          const trade: Partial<TradeOrder> = {
+            id: t.id,
+            token: t.orderid.toFixed(),
+            symb: t.symb,
+            bs: t['b/s'],
+            mktLmt: t['mkt/lmt'],
+            qty: isNaN(t.qty) ? 0 : Number(t.qty),
+            lvqty: 0,
+            cxlqty: 0,
+            price: isNaN(t.price) ? 0 : Number(t.price),
+            route: t.route,
+            time: t.time,
+            type: TradeType.TRADE,
+            // createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          this.tradeBotService.upsertBotOrder(trade as TradeOrder);
+        });
       });
     });
   }
@@ -149,7 +204,7 @@ export class TraderClient extends EventEmitter implements OnModuleDestroy {
 
   public dispose(force?: boolean) {
     if (
-      (this._currentStream && this._currentStream.eventNames().length === 0) ||
+      (this._currentStream && this._currentStream.eventNames()?.length === 0) ||
       force
     ) {
       this.logger.verbose('closing connection');

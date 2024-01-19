@@ -8,8 +8,8 @@ import {
 } from '@nestjs/websockets';
 import { DasService } from 'gamio/domain/das/das.service';
 import { Server, Socket } from 'socket.io';
-import { EnvConfig } from '../config/env.config';
 import { LoginCommand, LogoutCommand } from 'gamio/domain/das/commands';
+import { EnvConfig } from '../../config/env.config';
 
 /**
  * WebSocket gateway for handling DAS (Direct Access Service) events.

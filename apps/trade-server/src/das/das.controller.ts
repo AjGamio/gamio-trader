@@ -26,6 +26,17 @@ import { AppLoginDto } from 'gamio/domain';
 import { POSRefreshCommand } from 'gamio/domain/das/commands/pos.refresh.command';
 import { JwtAuthGuard } from '../guards/jwt.auth.guard';
 import { AuthService } from '../auth/auth.service';
+import { SellTradeDto } from 'gamio/domain/das/common/sell-trade.dto';
+import { MarketOrderCommand } from 'gamio/domain/das/commands/market.order.command';
+import { generateNewOrderToken } from 'gamio/domain/das/common/trade.helper';
+import { OrderAction, TimeInForce } from 'gamio/domain/das/enums';
+import { Types } from 'mongoose';
+import {
+  BuySellType,
+  TradeBotOrder,
+  TradeStatus,
+  TradeType,
+} from 'gamio/domain/trade-bot/tradeBotOder.entity';
 
 @ApiTags('Das')
 @Controller('das')
@@ -172,5 +183,70 @@ export class DASController {
   })
   closeConnection(@Res() res: Response): void {
     res.status(HttpStatus.OK).json({ message: 'Processed' });
+  }
+
+  /**
+   * sell trade.
+   *
+   * @param {SellTradeDto[]} sellTradeInput - Array of sell trade input objects.
+   * @returns {string} - Success message.
+   */
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Post('sell-trades')
+  @ApiOperation({ summary: 'Sell trade from DAS server' })
+  @ApiResponse({
+    status: HttpStatus.ACCEPTED,
+    description: 'Sell trade request accepted',
+    type: String, // Define the expected response type
+  })
+  @ApiBody({
+    description: 'Sell trade inputs',
+    type: [SellTradeDto], // Create a Sell Trade DTO class for the request body
+  })
+  @ApiResponse({
+    status: HttpStatus.ACCEPTED,
+    description: 'Sell trades request accepted',
+  })
+  async sellTrades(
+    @Body() sellTradeInputs: SellTradeDto[],
+    @Res() res: Response,
+  ): Promise<void> {
+    console.log(sellTradeInputs);
+    sellTradeInputs.map(async (s: SellTradeDto) => {
+      const tradeBotOderId = new Types.ObjectId();
+      const tradeBotOrder = {
+        _id: tradeBotOderId,
+        type: TradeType.ORDER,
+        bs: BuySellType.SELL,
+        symbol: s.symbol,
+        route: 'SMAT',
+        numberOfShares: s.quantity,
+        timeOfTrade: '',
+        tradeNumber: '',
+        // botId: new Types.ObjectId(t.bot._id.$oid),
+        // botName: t.bot.name,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        status: TradeStatus.PENDING,
+        message: '',
+        rawCommand: '',
+        token: generateNewOrderToken(),
+      };
+      await this.dasService.addBotOrder(
+        tradeBotOrder as unknown as TradeBotOrder,
+      );
+      this.dasService.enqueueCommand(
+        new MarketOrderCommand(
+          generateNewOrderToken().toString(),
+          OrderAction.Sell,
+          s.symbol,
+          'SMAT',
+          s.quantity.toString(),
+          TimeInForce.DayPlus,
+        ),
+      );
+    });
+    res.status(HttpStatus.ACCEPTED).json({ message: 'Processing' });
   }
 }

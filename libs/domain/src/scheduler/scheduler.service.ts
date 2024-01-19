@@ -23,6 +23,7 @@ import { MarketOrderCommand } from '../das/commands/market.order.command';
 import { OrderAction, TimeInForce } from '../das/enums';
 import { LimitOrderCommand } from '../das/commands/limit.order.command';
 import { EnvConfig } from '../config/env.config';
+import { generateNewOrderToken } from '../das/common/trade.helper';
 
 @Injectable()
 export class SchedulerService {
@@ -30,8 +31,6 @@ export class SchedulerService {
   private readonly logger: Logger;
   constructor(
     @InjectModel(TradeBot.name) private readonly tradeBotModel: Model<TradeBot>,
-    @InjectModel(TradeBotOrder.name)
-    private readonly tradeBotOrderModel: Model<TradeBotOrder>,
     private readonly polygonApiService: PolygonApiService,
     private readonly tradeService: TradeService,
     private readonly dasService: DasService,
@@ -130,13 +129,13 @@ export class SchedulerService {
               status: TradeStatus.PENDING,
               message: '',
               rawCommand: '',
-              token: new Date().getTime().toFixed(),
+              token: generateNewOrderToken(),
             };
 
             const orderCommand =
               marketOrLimit === 'MKT'
                 ? new MarketOrderCommand(
-                    tradeBotOrder.token,
+                    tradeBotOrder.token.toString(),
                     tradeBotOrder.bs === BuySellType.BUY
                       ? OrderAction.Buy
                       : OrderAction.Sell,
@@ -146,7 +145,7 @@ export class SchedulerService {
                     TimeInForce.DayPlus,
                   )
                 : new LimitOrderCommand(
-                    tradeBotOrder.token,
+                    tradeBotOrder.token.toString(),
                     tradeBotOrder.bs === BuySellType.BUY
                       ? OrderAction.Buy
                       : OrderAction.Sell,
@@ -157,7 +156,9 @@ export class SchedulerService {
                     TimeInForce.DayPlus,
                   );
             tradeBotOrder.rawCommand = orderCommand.ToString();
-            await this.addBotOrder(tradeBotOrder as unknown as TradeBotOrder);
+            await this.dasService.addBotOrder(
+              tradeBotOrder as unknown as TradeBotOrder,
+            );
             const rawCommand = `TRADE BOT ORDER COMMAND- ${tradeBotOrder.rawCommand}`;
             this.logger.verbose(rawCommand);
             await this.dasService.sendCommandToServer(orderCommand);
@@ -178,27 +179,5 @@ export class SchedulerService {
     this.tickerData = await this.polygonApiService.getMarketCap();
     this.logger.log(`tickerData- ${this.tickerData.length}`);
     this.dasService.emit('tickerAverages', this.polygonApiService.averages);
-  }
-
-  async addBotOrder(order: TradeBotOrder) {
-    let tickerOrderMsg = '';
-    try {
-      const result = await this.tradeBotOrderModel.collection.insertOne(order);
-
-      if (result.acknowledged) {
-        tickerOrderMsg = `Added new order for bot - ${order.botId} for symbol- ${order.symbol}`;
-        this.logger.log(tickerOrderMsg);
-      } else {
-        tickerOrderMsg = `Unable to add new order for bot - ${order.botId} for symbol- ${order.symbol}`;
-        this.logger.warn(tickerOrderMsg);
-      }
-      if (tickerOrderMsg.length > 0) {
-        this.dasService.emit('ticker-info', tickerOrderMsg);
-      }
-      return order;
-    } catch (err) {
-      tickerOrderMsg = `Unable to add new order for bot - ${order.botId} for symbol- ${order.symbol} due to ${err.message}`;
-      this.logger.error(tickerOrderMsg);
-    }
   }
 }

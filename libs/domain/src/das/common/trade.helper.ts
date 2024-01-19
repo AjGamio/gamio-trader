@@ -64,3 +64,8 @@ export function calculateMinMax(
     { min: 0, max: 0 },
   );
 }
+
+export function generateNewOrderToken(): number {
+  // Generate a random number between 100,000 (inclusive) and 999,999 (inclusive)
+  return Math.floor(Math.random() * (999999 - 100000 + 1)) + 100000;
+}

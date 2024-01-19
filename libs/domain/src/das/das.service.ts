@@ -13,6 +13,10 @@ import {
 } from '../polygon/interfaces/iTickerData';
 import { LoginDto } from './common';
 import { PolygonApiService } from '../polygon/polygon.service';
+import { TradeBotsService } from '../trade-bot/tradebot.service';
+import { TradeBotOrder } from '../trade-bot/tradeBotOder.entity';
+import { Model } from 'mongoose';
+import { InjectModel } from '@nestjs/mongoose';
 
 @Injectable()
 export class DasService {
@@ -25,7 +29,12 @@ export class DasService {
   private isProcessingQueue: boolean = false;
   private logger = new Logger(DasService.name);
   public loginDto: LoginDto;
-  constructor(private readonly polygonService: PolygonApiService) {
+  constructor(
+    private readonly polygonService: PolygonApiService,
+    private readonly tradeBotService: TradeBotsService,
+    @InjectModel(TradeBotOrder.name)
+    private readonly tradeBotOrderModel: Model<TradeBotOrder>,
+  ) {
     this.traderClientConnectionStatus = 'Connected';
     this.logger.log(`Connected client with id: ${this.client?.id}`);
   }
@@ -74,6 +83,7 @@ export class DasService {
   public async initTradeClient() {
     this.traderClient = new TraderClient(
       this.polygonService,
+      this.tradeBotService,
       this.loginDto,
       EnvConfig.DAS.SERVER.ADDRESS,
       EnvConfig.DAS.SERVER.PORT,
@@ -99,9 +109,6 @@ export class DasService {
   }
 
   private handleDataEmit(data: CommandData) {
-    if (EnvConfig.ENABLE_DEBUG) {
-      // this.logger.log('Event Data:', data);
-    }
     if (this.client) {
       this.client.emit('onDasTraderEmit', data);
     }
@@ -153,7 +160,32 @@ export class DasService {
       this.logger.log(
         `emitting event to client with id: ${this.client?.id}, event-${eventName}`,
       );
+    }
+
+    if (this.client?.id) {
       this.client?.emit(eventName, data);
+    }
+  }
+
+  async addBotOrder(order: TradeBotOrder) {
+    let tickerOrderMsg = '';
+    try {
+      const result = await this.tradeBotOrderModel.collection.insertOne(order);
+
+      if (result.acknowledged) {
+        tickerOrderMsg = `Added new order for bot - ${order.botId} for symbol- ${order.symbol}`;
+        this.logger.log(tickerOrderMsg);
+      } else {
+        tickerOrderMsg = `Unable to add new order for bot - ${order.botId} for symbol- ${order.symbol}`;
+        this.logger.warn(tickerOrderMsg);
+      }
+      if (tickerOrderMsg.length > 0) {
+        this.emit('ticker-info', tickerOrderMsg);
+      }
+      return order;
+    } catch (err) {
+      tickerOrderMsg = `Unable to add new order for bot - ${order.botId} for symbol- ${order.symbol} due to ${err.message}`;
+      this.logger.error(tickerOrderMsg);
     }
   }
 }
