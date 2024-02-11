@@ -60,55 +60,57 @@ export class TradeService {
     tickers: ITickerData[],
     bot: ITradeBot,
   ) {
-    let filteredTickers = await this.filterTickers(criteria, tickers);
+    if (tickers && tickers.length > 0) {
+      let filteredTickers = await this.filterTickers(criteria, tickers);
 
-    filteredTickers = await this.filterTickersByMarketCap(
-      criteria,
-      filteredTickers,
-    );
+      filteredTickers = await this.filterTickersByMarketCap(
+        criteria,
+        filteredTickers,
+      );
 
-    filteredTickers = await this.filterByPriceAndVolumeChangeXMinutes(
-      criteria,
-      filteredTickers,
-    );
+      filteredTickers = await this.filterByPriceAndVolumeChangeXMinutes(
+        criteria,
+        filteredTickers,
+      );
 
-    filteredTickers = await this.filterByRSI(criteria, filteredTickers);
+      filteredTickers = await this.filterByRSI(criteria, filteredTickers);
 
-    this.FilteredTickers.push({
-      tickers: filteredTickers,
-      bot,
-      status: filteredTickers.length > 0 ? 'waiting' : 'empty',
-    });
-
-    const existingEntryIndex = this.FilteredTickers.findIndex(
-      (entry) =>
-        entry.bot.name === bot.name && entry.bot._id.$oid === bot._id.$oid,
-    );
-
-    if (existingEntryIndex !== -1) {
-      // Entry with the same bot and tickers already exists, update it
-      this.FilteredTickers[existingEntryIndex].status =
-        filteredTickers.length > 0 ? 'waiting' : 'empty';
-    } else {
-      // Entry doesn't exist, add a new one
       this.FilteredTickers.push({
         tickers: filteredTickers,
         bot,
         status: filteredTickers.length > 0 ? 'waiting' : 'empty',
       });
-    }
-    if (EnvConfig.ENABLE_DEBUG && filteredTickers.length > 0) {
-      this.logger.verbose(
-        this.FilteredTickers.map((t) => {
-          return {
-            bot: t.bot.name,
-            tickers: t.tickers.map((s) => ({
-              symbol: s.ticker,
-              price: s.min.c,
-            })),
-          };
-        }),
+
+      const existingEntryIndex = this.FilteredTickers.findIndex(
+        (entry) =>
+          entry.bot.name === bot.name && entry.bot._id.$oid === bot._id.$oid,
       );
+
+      if (existingEntryIndex !== -1) {
+        // Entry with the same bot and tickers already exists, update it
+        this.FilteredTickers[existingEntryIndex].status =
+          filteredTickers.length > 0 ? 'waiting' : 'empty';
+      } else {
+        // Entry doesn't exist, add a new one
+        this.FilteredTickers.push({
+          tickers: filteredTickers,
+          bot,
+          status: filteredTickers.length > 0 ? 'waiting' : 'empty',
+        });
+      }
+      if (EnvConfig.ENABLE_DEBUG && filteredTickers.length > 0) {
+        this.logger.verbose(
+          this.FilteredTickers.map((t) => {
+            return {
+              bot: t.bot.name,
+              tickers: t.tickers.map((s) => ({
+                symbol: s.ticker,
+                price: s.min.c,
+              })),
+            };
+          }),
+        );
+      }
     }
   }
 
