@@ -72,7 +72,7 @@ export class SchedulerService {
     this.dasService.emit('tickerAverages', tickerAverages);
     await this.tradeService.startScanner(filteredBots, this.tickerData);
     const filteredTickers = cloneDeep(this.tradeService.FilteredTickers);
-    filteredTickers.map((t: FilteredTickersData) => {
+    filteredTickers?.map((t: FilteredTickersData) => {
       if (t.status === 'waiting') {
         t.processingDateTime = { start: new Date(), finish: new Date() };
         const tickerMsg = `Processing filtered tickers data for bot- ${t.bot.name} [${t.bot._id}] at - ${t.processingDateTime.start}`;
@@ -85,8 +85,8 @@ export class SchedulerService {
         )} tickers`;
         this.logger.log(tickerOrderMsg);
         this.dasService.emit('ticker-info', tickerOrderMsg);
-        queuedTickers.map(async (tk: ITickerData) => {
-          const tickerMarketCap = this.tickerData.find((td: ITickerData) => {
+        queuedTickers?.map(async (tk: ITickerData) => {
+          const tickerMarketCap = this.tickerData?.find((td: ITickerData) => {
             return td.ticker === tk.ticker;
           });
           if (!isNil(tickerMarketCap)) {
