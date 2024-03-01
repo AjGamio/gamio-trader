@@ -47,11 +47,11 @@ export class PolygonApiService {
       return data;
     } catch (error) {
       // Handle errors
-      console.error(
+      this.logger.error(
         'Error fetching Polygon data:',
         error.response?.data || error.message,
       );
-      throw error;
+      return null;
     }
   }
 

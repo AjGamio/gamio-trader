@@ -66,7 +66,10 @@ export class DasGateway
    */
   handleConnection(client: Socket) {
     const token = client.handshake.auth;
-    console.log("🚀 ~ file: das.gateway.ts:69 ~ handleConnection ~ token:", token)
+    console.log(
+      '🚀 ~ file: das.gateway.ts:69 ~ handleConnection ~ token:',
+      token,
+    );
     this.dasService.client = client;
     this.logger.log(`Client connected: ${this.dasService.client.id}`);
   }

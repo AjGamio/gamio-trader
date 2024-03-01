@@ -1,4 +1,4 @@
-import { ObjectId } from "mongoose";
+import { ObjectId } from 'mongoose';
 
 export interface ITickerData {
   ticker: string;
@@ -165,4 +165,3 @@ export interface TickerIndicatorDetailV1 {
   request_id: string;
   next_url?: string;
 }
-

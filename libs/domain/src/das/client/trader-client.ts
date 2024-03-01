@@ -12,10 +12,7 @@ import { JsonData, Order, Trade } from '../interfaces/iData';
 import { set } from 'lodash';
 import { PolygonApiService } from 'gamio/domain/polygon/polygon.service';
 import { TradeBotsService } from 'gamio/domain/trade-bot/tradebot.service';
-import {
-  TradeStatus,
-  TradeType,
-} from 'gamio/domain/trade-bot/tradeBotOder.entity';
+import { TradeType } from 'gamio/domain/trade-bot/tradeBotOder.entity';
 import { TradeOrder } from 'gamio/domain/trade-bot/tradeOrder.entity';
 import { EnvConfig } from 'gamio/domain/config/env.config';
 import { getTradeStatusFromString } from '../common/trade.helper';

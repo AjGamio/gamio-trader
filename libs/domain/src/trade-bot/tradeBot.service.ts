@@ -144,17 +144,17 @@ export class TradeBotsService {
         setDefaultsOnInsert: true,
       });
 
-      // if (result.upsertedCount > 0) {
-      // this.logger.log(`Added new order for symbol - ${order.symb}`);
-      // } else if (result.modifiedCount > 0) {
-      // this.logger.log(
-      // `Updated existing [${order.type}] for symbol - ${order.symb}`,
-      // );
-      // } else {
-      // this.logger.warn(
-      // `No changes made for [${order.type}] with symbol - ${order.symb}`,
-      // );
-      // }
+      if (result.upsertedCount > 0) {
+        this.logger.log(`Added new order for symbol - ${order.symb}`);
+      } else if (result.modifiedCount > 0) {
+        this.logger.log(
+          `Updated existing [${order.type}] for symbol - ${order.symb}`,
+        );
+      } else {
+        this.logger.warn(
+          `No changes made for [${order.type}] with symbol - ${order.symb}`,
+        );
+      }
 
       return order;
     } catch (err) {

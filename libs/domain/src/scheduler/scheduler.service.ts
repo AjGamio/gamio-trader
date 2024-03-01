@@ -39,7 +39,7 @@ export class SchedulerService {
   }
 
   // Define a cron job to run every minute
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron(CronExpression.EVERY_10_MINUTES)
   async fetchActiveBots() {
     const startTime = convertTo24HourFormat(getCurrentTimeInHHMMFormat());
     const filteredBots = await this.tradeBotModel

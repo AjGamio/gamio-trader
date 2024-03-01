@@ -11,7 +11,9 @@ describe('TraderClientController', () => {
       providers: [TraderClientService],
     }).compile();
 
-    traderClientController = app.get<TraderClientController>(TraderClientController);
+    traderClientController = app.get<TraderClientController>(
+      TraderClientController,
+    );
   });
 
   describe('root', () => {
