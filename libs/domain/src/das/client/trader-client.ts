@@ -1,21 +1,34 @@
-import * as net from 'net';
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { EventEmitter } from 'events';
-import { ITcpCommand } from '../interfaces/iCommand';
-import { ICommandResult } from '../interfaces/iCommand.result';
-import { CommandResult } from '../commands/command.result';
-import { TraderCommandType } from '../enums';
-import { LoginCommand } from '../commands';
-import { LoginDto } from '../common';
-import { ResponseEventArgs } from '../processors/response.event.args';
-import { JsonData, Order, Trade } from '../interfaces/iData';
-import { set } from 'lodash';
+import { EnvConfig } from 'gamio/domain/config/env.config';
 import { PolygonApiService } from 'gamio/domain/polygon/polygon.service';
 import { TradeBotsService } from 'gamio/domain/trade-bot/tradebot.service';
-import { TradeType } from 'gamio/domain/trade-bot/tradeBotOder.entity';
+import {
+  TradeStatus,
+  TradeType,
+} from 'gamio/domain/trade-bot/tradeBotOder.entity';
 import { TradeOrder } from 'gamio/domain/trade-bot/tradeOrder.entity';
-import { EnvConfig } from 'gamio/domain/config/env.config';
+import { set } from 'lodash';
+import * as net from 'net';
+
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+} from '@nestjs/common';
+
+import { LoginCommand } from '../commands';
+import { CommandResult } from '../commands/command.result';
+import { LoginDto } from '../common';
 import { getTradeStatusFromString } from '../common/trade.helper';
+import { TraderCommandType } from '../enums';
+import { ITcpCommand } from '../interfaces/iCommand';
+import { ICommandResult } from '../interfaces/iCommand.result';
+import {
+  JsonData,
+  Order,
+  Trade,
+} from '../interfaces/iData';
+import { ResponseEventArgs } from '../processors/response.event.args';
 
 @Injectable()
 export class TraderClient extends EventEmitter implements OnModuleDestroy {
@@ -97,12 +110,15 @@ export class TraderClient extends EventEmitter implements OnModuleDestroy {
 
         const { Order: orders, Trade: trades } = jsonData;
         orders.forEach((o: Order) => {
-          // this.logger.verbose(`order-${JSON.stringify(o)}`);
+          // this.logger.verbose(`DAS response: order-${JSON.stringify(o)}`);
           const status = getTradeStatusFromString(o.status);
-          this.tradeBotService.updateTradeBotOrder(o.token, o.id, status);
+          const orderToken = o.token === 'Send_Rej' ? o['b/s'] : o.token;
+          const orderStatus =
+            o.token === 'Send_Rej' ? TradeStatus.REJECTED : status;
+          this.tradeBotService.updateTradeBotOrder(orderToken, o.id, status);
           const trade: Partial<TradeOrder> = {
             id: o.id,
-            token: o.token,
+            token: orderToken,
             symb: o.symb,
             bs: o['b/s'],
             mktLmt: o['mkt/lmt'],
@@ -111,7 +127,7 @@ export class TraderClient extends EventEmitter implements OnModuleDestroy {
             cxlqty: isNaN(o.cxlqty) ? 0 : Number(o.cxlqty),
             price: isNaN(o.price) ? 0 : Number(o.price),
             route: o.route,
-            status: o.status,
+            status: orderStatus,
             time: o.time,
             type: TradeType.ORDER,
             // createdAt: new Date().toISOString(),
@@ -120,7 +136,7 @@ export class TraderClient extends EventEmitter implements OnModuleDestroy {
           this.tradeBotService.upsertBotOrder(trade as TradeOrder);
         });
         trades.forEach((t: Trade) => {
-          // this.logger.verbose(`trade-${JSON.stringify(t)}`);
+          // this.logger.verbose(`DAS response: trade-${JSON.stringify(t)}`);
           const trade: Partial<TradeOrder> = {
             id: t.id,
             token: t.orderid.toFixed(),

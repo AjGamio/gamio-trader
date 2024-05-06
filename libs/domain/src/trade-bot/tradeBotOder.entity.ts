@@ -1,6 +1,7 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
 import { IsDateString, IsEnum, IsNumber, IsString } from 'class-validator';
+import { Document, Types } from 'mongoose';
+
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
 export enum BuySellType {
   BUY = 'B',
@@ -15,6 +16,7 @@ export enum TradeStatus {
   ACCEPTED = 'Accepted',
   EXECUTED = 'Executed',
   TRIGGERED = 'Triggered',
+  REJECTED = 'Rejected',
 }
 
 export enum TradeType {

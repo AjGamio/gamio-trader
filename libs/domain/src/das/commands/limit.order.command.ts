@@ -1,4 +1,7 @@
-import { OrderAction, TimeInForce } from '../enums';
+import {
+  OrderAction,
+  TimeInForce,
+} from '../enums';
 import { BaseNewOrderCommand } from './new.oder.command';
 
 /**
@@ -16,7 +19,17 @@ export class LimitOrderCommand extends BaseNewOrderCommand {
     share: string,
     price: string,
     timeInForce: TimeInForce = TimeInForce.DayPlus,
+    ...parameters: string[]
   ) {
-    super(token, action, symbol, route, share, price, timeInForce.toString());
+    super(
+      token,
+      action,
+      symbol,
+      route,
+      share,
+      price,
+      timeInForce.toString(),
+      ...parameters,
+    );
   }
 }

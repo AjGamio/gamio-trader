@@ -1,6 +1,38 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  cloneDeep,
+  isNil,
+} from 'lodash';
+import {
+  Model,
+  Types,
+} from 'mongoose';
+
+import {
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import {
+  Cron,
+  CronExpression,
+} from '@nestjs/schedule';
+
+import { EnvConfig } from '../config/env.config';
+import { LimitOrderCommand } from '../das/commands/limit.order.command';
+import { MarketOrderCommand } from '../das/commands/market.order.command';
+import {
+  convertTo24HourFormat,
+  getCurrentTimeInHHMMFormat,
+} from '../das/common/date-time.helper';
+import { generateNewOrderToken } from '../das/common/trade.helper';
+import { DasService } from '../das/das.service';
+import {
+  OrderAction,
+  TimeInForce,
+} from '../das/enums';
+import { FilteredTickersData } from '../das/interfaces/iData';
+import { ITickerData } from '../polygon/interfaces/iTickerData';
+import { PolygonApiService } from '../polygon/polygon.service';
 import { TradeBot } from '../trade-bot/tradeBot.entity';
 import {
   BuySellType,
@@ -8,22 +40,7 @@ import {
   TradeStatus,
   TradeType,
 } from '../trade-bot/tradeBotOder.entity';
-import { Model, Types } from 'mongoose';
-import {
-  convertTo24HourFormat,
-  getCurrentTimeInHHMMFormat,
-} from '../das/common/date-time.helper';
-import { PolygonApiService } from '../polygon/polygon.service';
-import { ITickerData } from '../polygon/interfaces/iTickerData';
 import { TradeService } from '../trade/trade.service';
-import { DasService } from '../das/das.service';
-import { cloneDeep, isNil } from 'lodash';
-import { FilteredTickersData } from '../das/interfaces/iData';
-import { MarketOrderCommand } from '../das/commands/market.order.command';
-import { OrderAction, TimeInForce } from '../das/enums';
-import { LimitOrderCommand } from '../das/commands/limit.order.command';
-import { EnvConfig } from '../config/env.config';
-import { generateNewOrderToken } from '../das/common/trade.helper';
 
 @Injectable()
 export class SchedulerService {
@@ -51,14 +68,14 @@ export class SchedulerService {
         },
       })
       .exec();
-    this.logger.log('Executing every 5 minutes');
+    this.logger.log('Executing every 10 minutes');
     if (filteredBots.length > 0) {
       this.logger.log(
         `filteredBots-${filteredBots.map((b) => b.name).join(' | ')}`,
       );
     }
     if (this.dasService.client) {
-      this.dasService.client.emit('ping', 'Executing every 5 minute');
+      this.dasService.client.emit('ping', 'Executing every 10 minutes');
       this.dasService.client.emit(
         'filteredBots',
         filteredBots.map((b) => b.name),
@@ -103,6 +120,23 @@ export class SchedulerService {
             const tickerCurrentPrice = parseFloat(
               (tickerMarketCap.min.c * limitOrderPercent).toFixed(2),
             );
+            const highRange = parseFloat(
+              (tickerMarketCap.min.c * takeProfitPercent).toFixed(2),
+            );
+            const lowRange = parseFloat(
+              (tickerMarketCap.min.c * stopLossPercent).toFixed(2),
+            );
+
+            const params = [];
+            if (lowRange > 0 && highRange > 0) {
+              if (marketOrLimit === 'MKT') {
+                params.push('STOPRANGEMKT');
+              } else {
+                params.push('STOPRANGE');
+              }
+              params.push((tickerCurrentPrice - lowRange).toFixed());
+              params.push((tickerCurrentPrice + highRange).toFixed());
+            }
             const tradeBotOderId = new Types.ObjectId();
             const tradeBotOrder = {
               _id: tradeBotOderId,
@@ -143,6 +177,7 @@ export class SchedulerService {
                     tradeBotOrder.route,
                     tradeBotOrder.numberOfShares.toFixed(),
                     TimeInForce.DayPlus,
+                    ...params,
                   )
                 : new LimitOrderCommand(
                     tradeBotOrder.token.toString(),
@@ -154,6 +189,7 @@ export class SchedulerService {
                     tradeBotOrder.numberOfShares.toFixed(),
                     tradeBotOrder.price.toFixed(),
                     TimeInForce.DayPlus,
+                    ...params,
                   );
             tradeBotOrder.rawCommand = orderCommand.ToString();
             await this.dasService.addBotOrder(
@@ -174,7 +210,7 @@ export class SchedulerService {
     // this.dasService.emit('filteredTickers', this.tradeService.FilteredTickers);
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_1AM)
+  @Cron(CronExpression.EVERY_10_MINUTES)
   async fetchMarketCap() {
     this.tickerData = await this.polygonApiService.getMarketCap();
     this.logger.log(`tickerData- ${this.tickerData.length}`);

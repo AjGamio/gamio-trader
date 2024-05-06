@@ -1,22 +1,27 @@
 // src/polygon-api/polygon-api.service.ts
 
-import { Injectable, Logger } from '@nestjs/common';
-import { EnvConfig } from '../config/env.config';
 import axios from 'axios';
+import { Model } from 'mongoose';
+
 import {
-  ITickerData,
-  TickerAggregateDetailV2,
-  TickerDetailV3,
-  TickerIndicatorDetailV1,
-  iTickerAverages,
-} from './interfaces/iTickerData';
+  Injectable,
+  Logger,
+} from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+
+import { EnvConfig } from '../config/env.config';
 import {
   calculateAverage,
   calculateAverageWithMinMax,
 } from '../das/common/trade.helper';
+import {
+  iTickerAverages,
+  ITickerData,
+  TickerAggregateDetailV2,
+  TickerDetailV3,
+  TickerIndicatorDetailV1,
+} from './interfaces/iTickerData';
 import { Stock } from './stock.entity';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
 
 @Injectable()
 export class PolygonApiService {
@@ -102,7 +107,8 @@ export class PolygonApiService {
 
       return response.data;
     } catch (error) {
-      console.error(
+      console.error(error);
+      this.logger.error(
         `Error fetching aggregated bar data for ticker-${ticker}, error: ${error.message}`,
       );
       return null;

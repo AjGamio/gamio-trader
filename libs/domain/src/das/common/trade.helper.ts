@@ -84,3 +84,45 @@ export function getTradeStatusFromString(
     (enumValue) => enumValue === stringValue,
   ) as TradeStatus | undefined;
 }
+
+/**
+ * Generates a random bot name.
+ * @returns {string} A randomly generated bot name.
+ */
+export function generateBotName(): string {
+  /** @type {string[]} Array of adjectives for generating bot names */
+  const adjectives = [
+    'Alpha',
+    'Beta',
+    'Gamma',
+    'Delta',
+    'Omega',
+    'Spartan',
+    'Titan',
+    'Phoenix',
+    'Galactic',
+    'Cosmic',
+  ];
+  /** @type {string[]} Array of nouns for generating bot names */
+  const nouns: string[] = [
+    'Trader',
+    'Investor',
+    'Bot',
+    'Algorithm',
+    'Executor',
+    'Strategist',
+    'Quant',
+    'Machine',
+    'AI',
+    'Engine',
+  ];
+
+  /** @type {string} Randomly selected adjective */
+  const randomAdjective: string =
+    adjectives[Math.floor(Math.random() * adjectives.length)];
+  /** @type {string} Randomly selected noun */
+  const randomNoun: string = nouns[Math.floor(Math.random() * nouns.length)];
+
+  /** @type {string} The generated bot name */
+  return `${randomAdjective} ${randomNoun}`;
+}

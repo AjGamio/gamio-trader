@@ -1,9 +1,23 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { FilterQuery, Model } from 'mongoose';
-import { InjectModel } from '@nestjs/mongoose';
-import { TradeBot } from './tradeBot.entity';
-import { TradeBotOrder, TradeStatus, TradeType } from './tradeBotOder.entity';
 import { isNil } from 'lodash';
+import {
+  FilterQuery,
+  Model,
+} from 'mongoose';
+
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+
+import { generateBotName } from '../das/common/trade.helper';
+import { TradeBot } from './tradeBot.entity';
+import {
+  TradeBotOrder,
+  TradeStatus,
+  TradeType,
+} from './tradeBotOder.entity';
 import { TradeOrder } from './tradeOrder.entity';
 
 @Injectable()
@@ -73,13 +87,14 @@ export class TradeBotsService {
   }
 
   async create(createTradeBotDto: TradeBot): Promise<TradeBot> {
-    const botCount = await this.tradeBotModel.countDocuments();
+    const botName = generateBotName();
+    const botCount = await this.tradeBotModel.countDocuments({ name: botName });
     let createdTradeBot = new this.tradeBotModel(createTradeBotDto);
     createdTradeBot = Object.assign(createdTradeBot, createTradeBotDto);
     createdTradeBot = Object.assign(createdTradeBot, {
       updatedAt: new Date(),
       createdAt: new Date(),
-      name: `bot-${Number(botCount) + 1}`,
+      name: botCount > 0 ? `${botName}-${botCount}` : botName,
     });
     await this.tradeBotModel.collection.insertOne(createdTradeBot, {});
     return createdTradeBot;
@@ -174,6 +189,13 @@ export class TradeBotsService {
         await this.tradeBotOrderModel.collection.updateOne(
           {
             token,
+            status: {
+              $nin: [
+                TradeStatus.COMPLETED,
+                TradeStatus.EXECUTED,
+                TradeStatus.SENDING,
+              ],
+            },
           },
           {
             $set: {

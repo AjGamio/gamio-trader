@@ -1,16 +1,23 @@
-import { Socket } from 'net';
-import { EventEmitter } from 'stream';
-import { Logger } from '@nestjs/common';
-import { ResponseEventArgs } from './response.event.args';
-import { GenericEventEmitter } from './event.processor';
-import { TraderCommandType } from '../enums';
-import { CommandData, JsonData, Order, Trade } from '../interfaces/iData';
 import { TradeBotsService } from 'gamio/domain/trade-bot/tradebot.service';
 import {
   TradeStatus,
   TradeType,
 } from 'gamio/domain/trade-bot/tradeBotOder.entity';
 import { TradeOrder } from 'gamio/domain/trade-bot/tradeOrder.entity';
+import { Socket } from 'net';
+import { EventEmitter } from 'stream';
+
+import { Logger } from '@nestjs/common';
+
+import { TraderCommandType } from '../enums';
+import {
+  CommandData,
+  JsonData,
+  Order,
+  Trade,
+} from '../interfaces/iData';
+import { GenericEventEmitter } from './event.processor';
+import { ResponseEventArgs } from './response.event.args';
 
 class ResponseProcessor extends EventEmitter {
   private readonly logger: Logger;
@@ -105,15 +112,14 @@ class ResponseProcessor extends EventEmitter {
 
     const { Order: orders, Trade: trades } = data.data as JsonData;
     orders.forEach((o: Order) => {
-      // this.logger.verbose(`order-${JSON.stringify(o)}`);
-      this.tradeBotService.updateTradeBotOrder(
-        o.token,
-        o.id,
-        TradeStatus[o.status],
-      );
+      // this.logger.verbose(`DAS response: order-${JSON.stringify(o)}`);
+      const orderToken = o.token === 'Send_Rej' ? o['b/s'] : o.token;
+      const orderStatus =
+        o.token === 'Send_Rej' ? TradeStatus.REJECTED : TradeStatus[o.status];
+      this.tradeBotService.updateTradeBotOrder(orderToken, o.id, orderStatus);
       const trade: Partial<TradeOrder> = {
         id: o.id,
-        token: o.token,
+        token: orderToken,
         symb: o.symb,
         bs: o['b/s'],
         mktLmt: o['mkt/lmt'],
@@ -122,7 +128,7 @@ class ResponseProcessor extends EventEmitter {
         cxlqty: isNaN(o.cxlqty) ? 0 : Number(o.cxlqty),
         price: isNaN(o.price) ? 0 : Number(o.price),
         route: o.route,
-        status: o.status,
+        status: orderStatus,
         time: o.time,
         type: TradeType.ORDER,
         // createdAt: new Date().toISOString(),
@@ -131,7 +137,7 @@ class ResponseProcessor extends EventEmitter {
       this.tradeBotService.upsertBotOrder(trade as TradeOrder);
     });
     trades.forEach((t: Trade) => {
-      // this.logger.verbose(`trade-${JSON.stringify(t)}`);
+      // this.logger.verbose(`DAS response : trade-${JSON.stringify(t)}`);
       const trade: Partial<TradeOrder> = {
         id: t.id,
         token: t.orderid.toFixed(),
