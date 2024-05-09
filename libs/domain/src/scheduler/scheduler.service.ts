@@ -1,21 +1,9 @@
-import {
-  cloneDeep,
-  isNil,
-} from 'lodash';
-import {
-  Model,
-  Types,
-} from 'mongoose';
+import { cloneDeep, isNil } from 'lodash';
+import { Model, Types } from 'mongoose';
 
-import {
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import {
-  Cron,
-  CronExpression,
-} from '@nestjs/schedule';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { EnvConfig } from '../config/env.config';
 import { LimitOrderCommand } from '../das/commands/limit.order.command';
@@ -26,10 +14,7 @@ import {
 } from '../das/common/date-time.helper';
 import { generateNewOrderToken } from '../das/common/trade.helper';
 import { DasService } from '../das/das.service';
-import {
-  OrderAction,
-  TimeInForce,
-} from '../das/enums';
+import { OrderAction, TimeInForce } from '../das/enums';
 import { FilteredTickersData } from '../das/interfaces/iData';
 import { ITickerData } from '../polygon/interfaces/iTickerData';
 import { PolygonApiService } from '../polygon/polygon.service';
@@ -41,6 +26,7 @@ import {
   TradeType,
 } from '../trade-bot/tradeBotOder.entity';
 import { TradeService } from '../trade/trade.service';
+import { StopRangeOrderCommand } from '../das/commands/stop.range.order.command';
 
 @Injectable()
 export class SchedulerService {
@@ -56,7 +42,7 @@ export class SchedulerService {
   }
 
   // Define a cron job to run every minute
-  @Cron(CronExpression.EVERY_10_MINUTES)
+  @Cron(CronExpression.EVERY_5_MINUTES)
   async fetchActiveBots() {
     const startTime = convertTo24HourFormat(getCurrentTimeInHHMMFormat());
     const filteredBots = await this.tradeBotModel
@@ -127,16 +113,6 @@ export class SchedulerService {
               (tickerMarketCap.min.c * stopLossPercent).toFixed(2),
             );
 
-            const params = [];
-            if (lowRange > 0 && highRange > 0) {
-              if (marketOrLimit === 'MKT') {
-                params.push('STOPRANGEMKT');
-              } else {
-                params.push('STOPRANGE');
-              }
-              params.push((tickerCurrentPrice - lowRange).toFixed());
-              params.push((tickerCurrentPrice + highRange).toFixed());
-            }
             const tradeBotOderId = new Types.ObjectId();
             const tradeBotOrder = {
               _id: tradeBotOderId,
@@ -166,31 +142,24 @@ export class SchedulerService {
               token: generateNewOrderToken().toString(),
             };
 
-            const orderCommand =
-              marketOrLimit === 'MKT'
-                ? new MarketOrderCommand(
-                    tradeBotOrder.token.toString(),
-                    tradeBotOrder.bs === BuySellType.BUY
-                      ? OrderAction.Buy
-                      : OrderAction.Sell,
-                    tradeBotOrder.symbol,
-                    tradeBotOrder.route,
-                    tradeBotOrder.numberOfShares.toFixed(),
-                    TimeInForce.DayPlus,
-                    ...params,
-                  )
-                : new LimitOrderCommand(
-                    tradeBotOrder.token.toString(),
-                    tradeBotOrder.bs === BuySellType.BUY
-                      ? OrderAction.Buy
-                      : OrderAction.Sell,
-                    tradeBotOrder.symbol,
-                    tradeBotOrder.route,
-                    tradeBotOrder.numberOfShares.toFixed(),
-                    tradeBotOrder.price.toFixed(),
-                    TimeInForce.DayPlus,
-                    ...params,
-                  );
+            // const params = [];
+            // if (lowRange > 0 && highRange > 0) {
+            //   if (marketOrLimit === 'MKT') {
+            //     params.push('STOPRANGEMKT');
+            //   } else {
+            //     params.push('STOPRANGE');
+            //   }
+            //   params.push((tickerCurrentPrice - lowRange).toFixed());
+            //   params.push((tickerCurrentPrice + highRange).toFixed());
+            // }
+
+            const orderCommand = this.createOrderCommand(
+              lowRange,
+              highRange,
+              tradeBotOrder,
+              marketOrLimit,
+              tickerCurrentPrice,
+            );
             tradeBotOrder.rawCommand = orderCommand.ToString();
             await this.dasService.addBotOrder(
               tradeBotOrder as unknown as TradeBotOrder,
@@ -208,6 +177,170 @@ export class SchedulerService {
       }
     });
     // this.dasService.emit('filteredTickers', this.tradeService.FilteredTickers);
+  }
+
+  private createOrderCommand(
+    lowRange: number,
+    highRange: number,
+    tradeBotOrder: {
+      _id: Types.ObjectId;
+      type: TradeType;
+      bs: BuySellType;
+      price: number;
+      symbol: string;
+      route: string;
+      numberOfShares: number;
+      stopLossPercent: number;
+      takeProfitPercent: number;
+      timeLimitStop: number;
+      timeOfTrade: string;
+      tradeNumber: string;
+      botId: Types.ObjectId;
+      botName: string;
+      createdAt: Date;
+      updatedAt: Date;
+      status: TradeStatus;
+      message: string;
+      rawCommand: string;
+      token: string;
+    },
+    marketOrLimit: string,
+    tickerCurrentPrice: number,
+  ) {
+    return lowRange > 0 && highRange > 0
+      ? new StopRangeOrderCommand(
+          tradeBotOrder.token.toString(),
+          this.setOrderAction(tradeBotOrder),
+          tradeBotOrder.symbol,
+          tradeBotOrder.route,
+          tradeBotOrder.numberOfShares.toFixed(),
+          marketOrLimit === 'MKT',
+          (tickerCurrentPrice - lowRange).toFixed(),
+          (tickerCurrentPrice + highRange).toFixed(),
+        )
+      : this.createMarketOrLimitOrder(marketOrLimit, tradeBotOrder);
+  }
+
+  private setOrderAction(tradeBotOrder: {
+    _id: Types.ObjectId;
+    type: TradeType;
+    bs: BuySellType;
+    price: number;
+    symbol: string;
+    route: string;
+    numberOfShares: number;
+    stopLossPercent: number;
+    takeProfitPercent: number;
+    timeLimitStop: number;
+    timeOfTrade: string;
+    tradeNumber: string;
+    botId: Types.ObjectId;
+    botName: string;
+    createdAt: Date;
+    updatedAt: Date;
+    status: TradeStatus;
+    message: string;
+    rawCommand: string;
+    token: string;
+  }): OrderAction {
+    return tradeBotOrder.bs === BuySellType.BUY
+      ? OrderAction.Buy
+      : OrderAction.Sell;
+  }
+
+  private createMarketOrLimitOrder(
+    marketOrLimit: string,
+    tradeBotOrder: {
+      _id: Types.ObjectId;
+      type: TradeType;
+      bs: BuySellType;
+      price: number;
+      symbol: string;
+      route: string;
+      numberOfShares: number;
+      stopLossPercent: number;
+      takeProfitPercent: number;
+      timeLimitStop: number;
+      timeOfTrade: string;
+      tradeNumber: string;
+      botId: Types.ObjectId;
+      botName: string;
+      createdAt: Date;
+      updatedAt: Date;
+      status: TradeStatus;
+      message: string;
+      rawCommand: string;
+      token: string;
+    },
+  ) {
+    return marketOrLimit === 'MKT'
+      ? this.createMarketOrder(tradeBotOrder)
+      : this.createLimitOrder(tradeBotOrder);
+  }
+
+  private createLimitOrder(tradeBotOrder: {
+    _id: Types.ObjectId;
+    type: TradeType;
+    bs: BuySellType;
+    price: number;
+    symbol: string;
+    route: string;
+    numberOfShares: number;
+    stopLossPercent: number;
+    takeProfitPercent: number;
+    timeLimitStop: number;
+    timeOfTrade: string;
+    tradeNumber: string;
+    botId: Types.ObjectId;
+    botName: string;
+    createdAt: Date;
+    updatedAt: Date;
+    status: TradeStatus;
+    message: string;
+    rawCommand: string;
+    token: string;
+  }) {
+    return new LimitOrderCommand(
+      tradeBotOrder.token.toString(),
+      this.setOrderAction(tradeBotOrder),
+      tradeBotOrder.symbol,
+      tradeBotOrder.route,
+      tradeBotOrder.numberOfShares.toFixed(),
+      tradeBotOrder.price.toFixed(),
+      TimeInForce.DayPlus,
+    );
+  }
+
+  private createMarketOrder(tradeBotOrder: {
+    _id: Types.ObjectId;
+    type: TradeType;
+    bs: BuySellType;
+    price: number;
+    symbol: string;
+    route: string;
+    numberOfShares: number;
+    stopLossPercent: number;
+    takeProfitPercent: number;
+    timeLimitStop: number;
+    timeOfTrade: string;
+    tradeNumber: string;
+    botId: Types.ObjectId;
+    botName: string;
+    createdAt: Date;
+    updatedAt: Date;
+    status: TradeStatus;
+    message: string;
+    rawCommand: string;
+    token: string;
+  }) {
+    return new MarketOrderCommand(
+      tradeBotOrder.token.toString(),
+      this.setOrderAction(tradeBotOrder),
+      tradeBotOrder.symbol,
+      tradeBotOrder.route,
+      tradeBotOrder.numberOfShares.toFixed(),
+      TimeInForce.DayPlus,
+    );
   }
 
   @Cron(CronExpression.EVERY_10_MINUTES)
