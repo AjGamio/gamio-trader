@@ -28,6 +28,10 @@ export interface Position {
   initqty: number;
   initprice: number;
   Realized: number;
+  // UnRealized: number;
+  // BidPrice: number;
+  // AskPrice: number;
+  // CurrentPrice: number;
   CreatTime: string;
 }
 
@@ -105,4 +109,9 @@ export interface FilteredTickersData {
   tickers: ITickerData[];
   status: 'waiting' | 'processing' | 'processed' | 'empty';
   processingDateTime?: { start: Date; finish: Date };
+}
+
+export interface Quote {
+  ask_price: number; // Ask price
+  bid_price: number; // Bid price
 }

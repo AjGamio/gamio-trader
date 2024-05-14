@@ -126,3 +126,16 @@ export function generateBotName(): string {
   /** @type {string} The generated bot name */
   return `${randomAdjective} ${randomNoun}`;
 }
+
+/**
+ * Returns the current timestamp in nanoseconds.
+ * @returns {number} The current timestamp in nanoseconds.
+ */
+export function getCurrentTimestampInNanoseconds(): number {
+  // Get current time in milliseconds
+  const currentTime = Date.now();
+  // Calculate the time 30 minutes ago in milliseconds
+  // const thirtyMinutesAgo = currentTime - 30 * 60 * 1000; // 15 minutes in milliseconds
+  // Convert milliseconds to nanoseconds (1 second = 1e9 nanoseconds)
+  return currentTime * 1e6;
+}

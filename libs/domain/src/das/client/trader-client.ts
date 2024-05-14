@@ -10,11 +10,7 @@ import { TradeOrder } from 'gamio/domain/trade-bot/tradeOrder.entity';
 import { set } from 'lodash';
 import * as net from 'net';
 
-import {
-  Injectable,
-  Logger,
-  OnModuleDestroy,
-} from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 
 import { LoginCommand } from '../commands';
 import { CommandResult } from '../commands/command.result';
@@ -23,11 +19,7 @@ import { getTradeStatusFromString } from '../common/trade.helper';
 import { TraderCommandType } from '../enums';
 import { ITcpCommand } from '../interfaces/iCommand';
 import { ICommandResult } from '../interfaces/iCommand.result';
-import {
-  JsonData,
-  Order,
-  Trade,
-} from '../interfaces/iData';
+import { JsonData, Order, Position, Trade } from '../interfaces/iData';
 import { ResponseEventArgs } from '../processors/response.event.args';
 
 @Injectable()
@@ -88,21 +80,29 @@ export class TraderClient extends EventEmitter implements OnModuleDestroy {
         const jsonData = eventData.data as JsonData;
         const updatedData = await Promise.all(
           jsonData.POS.map(async (s) => {
-            const {
-              name,
-              market,
-              primary_exchange,
-              currency_name,
-              sic_description,
-            } = await this.polygonService.getStockDetails(s.symb);
-            return {
-              ...s,
-              name,
-              market,
-              primary_exchange,
-              currency_name,
-              sic_description,
-            };
+            await this.calculateRealizedAndUnrealized(s);
+            const tickerDetails = await this.polygonService.getStockDetails(
+              s.symb,
+            );
+            if (tickerDetails) {
+              const {
+                name,
+                market,
+                primary_exchange,
+                currency_name,
+                sic_description,
+              } = tickerDetails;
+              return {
+                ...s,
+                name,
+                market,
+                primary_exchange,
+                currency_name,
+                sic_description,
+              };
+            } else {
+              this.logger.error(`Ticker detail for ${s.symb} not found.`);
+            }
           }),
         );
         set(jsonData, 'POS', updatedData);
@@ -207,6 +207,52 @@ export class TraderClient extends EventEmitter implements OnModuleDestroy {
         this.logger.warn(`DAS server login credentials not found`);
       }
     }
+  }
+
+  private async calculateRealizedAndUnrealized(
+    position: Position,
+  ): Promise<void> {
+    let realized = 0;
+    let unrealized = 0;
+
+    // Fetch current price for the symbol
+    const currentPrices = await this.polygonService.getCurrentPrices(
+      position.symb,
+    );
+
+    switch (position.type) {
+      case 1: // Buy
+        // No realized profit or loss for buy positions
+        break;
+      case 2: // Sell Margin
+      case 3: // Buy Short
+        // Calculate realized profit or loss
+        realized += position.Realized != null ? position.Realized : 0;
+        break;
+    }
+
+    // Calculate unrealized value for the position
+    if (position.qty > 0 && currentPrices != null) {
+      switch (position.type) {
+        case 3:
+          unrealized =
+            position.avgcost * position.qty -
+            position.qty * currentPrices.currentPrice;
+          break;
+        case 2: // Sell Margin
+        default:
+          unrealized =
+            position.qty * currentPrices.currentPrice -
+            position.avgcost * position.qty;
+          break;
+      }
+    }
+
+    set(position, 'Realized', realized);
+    set(position, 'UnRealized', unrealized);
+    set(position, 'BidPrice', currentPrices.bidPrice);
+    set(position, 'AskPrice', currentPrices.askPrice);
+    set(position, 'CurrentPrice', currentPrices.currentPrice);
   }
 
   onModuleDestroy() {

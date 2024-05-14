@@ -10,12 +10,7 @@ import { EventEmitter } from 'stream';
 import { Logger } from '@nestjs/common';
 
 import { TraderCommandType } from '../enums';
-import {
-  CommandData,
-  JsonData,
-  Order,
-  Trade,
-} from '../interfaces/iData';
+import { CommandData, JsonData, Order, Trade } from '../interfaces/iData';
 import { GenericEventEmitter } from './event.processor';
 import { ResponseEventArgs } from './response.event.args';
 

@@ -7,7 +7,7 @@ export const EnvConfig = {
   POLYGON_API_KEY: process.env.POLYGON_API_KEY,
   MONGO_DB_URL: process.env.MONGO_DB_URL,
   ALLOWED_ORIGIN: process.env.ALLOWED_ORIGIN,
-  ENABLE_DEBUG: process.env.ENABLE_DEBUG,
+  ENABLE_DEBUG: process.env.ENABLE_DEBUG === 'true',
   PORT: Number(process.env.PORT) ?? 30004,
   SOCKET_PORT: process.env.SOCKET_PORT ?? 30005,
   SECRET_KEY: process.env.SECRET,

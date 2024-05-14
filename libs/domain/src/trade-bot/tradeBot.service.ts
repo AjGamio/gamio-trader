@@ -1,24 +1,14 @@
 import { isNil } from 'lodash';
-import {
-  FilterQuery,
-  Model,
-} from 'mongoose';
+import { FilterQuery, Model } from 'mongoose';
 
-import {
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 
 import { generateBotName } from '../das/common/trade.helper';
 import { TradeBot } from './tradeBot.entity';
-import {
-  TradeBotOrder,
-  TradeStatus,
-  TradeType,
-} from './tradeBotOder.entity';
+import { TradeBotOrder, TradeStatus, TradeType } from './tradeBotOder.entity';
 import { TradeOrder } from './tradeOrder.entity';
+import { EnvConfig } from '../config/env.config';
 
 @Injectable()
 export class TradeBotsService {
@@ -162,13 +152,17 @@ export class TradeBotsService {
       if (result.upsertedCount > 0) {
         this.logger.log(`Added new order for symbol - ${order.symb}`);
       } else if (result.modifiedCount > 0) {
-        this.logger.log(
-          `Updated existing [${order.type}] for symbol - ${order.symb}`,
-        );
+        if (EnvConfig.ENABLE_DEBUG) {
+          this.logger.log(
+            `Updated existing [${order.type}] for symbol - ${order.symb}`,
+          );
+        }
       } else {
-        this.logger.warn(
-          `No changes made for [${order.type}] with symbol - ${order.symb}`,
-        );
+        if (EnvConfig.ENABLE_DEBUG) {
+          this.logger.warn(
+            `No changes made for [${order.type}] with symbol - ${order.symb}`,
+          );
+        }
       }
 
       return order;

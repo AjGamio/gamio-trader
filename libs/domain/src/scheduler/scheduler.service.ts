@@ -42,19 +42,19 @@ export class SchedulerService {
   }
 
   // Define a cron job to run every minute
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron(CronExpression.EVERY_30_MINUTES)
   async fetchActiveBots() {
     const startTime = convertTo24HourFormat(getCurrentTimeInHHMMFormat());
     const filteredBots = await this.tradeBotModel
       .find({
         botActiveTimes: {
           $elemMatch: {
-            $or: [{ start: { $gte: startTime } }, { end: { $lte: startTime } }],
+            $or: [{ start: { $lte: startTime } }, { end: { $gte: startTime } }],
           },
         },
       })
       .exec();
-    this.logger.log('Executing every 10 minutes');
+    this.logger.log('Executing every 30 minutes');
     if (filteredBots.length > 0) {
       this.logger.log(
         `filteredBots-${filteredBots.map((b) => b.name).join(' | ')}`,
@@ -142,17 +142,6 @@ export class SchedulerService {
               token: generateNewOrderToken().toString(),
             };
 
-            // const params = [];
-            // if (lowRange > 0 && highRange > 0) {
-            //   if (marketOrLimit === 'MKT') {
-            //     params.push('STOPRANGEMKT');
-            //   } else {
-            //     params.push('STOPRANGE');
-            //   }
-            //   params.push((tickerCurrentPrice - lowRange).toFixed());
-            //   params.push((tickerCurrentPrice + highRange).toFixed());
-            // }
-
             const orderCommand = this.createOrderCommand(
               lowRange,
               highRange,
@@ -207,6 +196,7 @@ export class SchedulerService {
     marketOrLimit: string,
     tickerCurrentPrice: number,
   ) {
+    this.logger.debug({ lowRange, highRange });
     return lowRange > 0 && highRange > 0
       ? new StopRangeOrderCommand(
           tradeBotOrder.token.toString(),

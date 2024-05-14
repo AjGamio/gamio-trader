@@ -162,11 +162,15 @@ const convertPositionDataToJSON = (dataString: string): Position | null => {
         symb: symbol,
         type: parseInt(quantity),
         qty: parseFloat(price),
-        avgcost: parseInt(field4),
+        avgcost: parseFloat(field4),
         initqty: parseInt(field5),
-        initprice: parseInt(field6),
-        Realized: parseInt(field7),
+        initprice: parseFloat(field6),
+        Realized: parseFloat(field7),
         CreatTime: timestamp,
+        // UnRealized: 0,
+        // CurrentPrice: 0,
+        // AskPrice: 0,
+        // BidPrice: 0,
       };
 
       if (Object.keys(position).length === 8) {

@@ -3,16 +3,14 @@
 import axios from 'axios';
 import { Model } from 'mongoose';
 
-import {
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 
 import { EnvConfig } from '../config/env.config';
 import {
   calculateAverage,
   calculateAverageWithMinMax,
+  getCurrentTimestampInNanoseconds,
 } from '../das/common/trade.helper';
 import {
   iTickerAverages,
@@ -22,6 +20,7 @@ import {
   TickerIndicatorDetailV1,
 } from './interfaces/iTickerData';
 import { Stock } from './stock.entity';
+import { Quote } from '../das/interfaces/iData';
 
 @Injectable()
 export class PolygonApiService {
@@ -40,6 +39,11 @@ export class PolygonApiService {
   async getPolygonData(symbol: string): Promise<Stock> {
     const endpoint = `/v3/reference/tickers/${symbol}`; // Replace with the actual endpoint
 
+    if (EnvConfig.ENABLE_DEBUG) {
+      this.logger.debug(
+        `Fetching detail for symbol- ${symbol}, url: ${endpoint}`,
+      );
+    }
     try {
       const response = await axios.get(`${this.baseUrl}${endpoint}`, {
         headers: { Authorization: `Bearer ${this.apiKey}` },
@@ -158,6 +162,9 @@ export class PolygonApiService {
   }
 
   async getStockDetails(ticker: string): Promise<Stock> {
+    if (EnvConfig.ENABLE_DEBUG) {
+      this.logger.debug(`Getting details for stock -${ticker}`);
+    }
     const tickerDetails = await this.stockModel.findOne({
       ticker,
     });
@@ -184,11 +191,52 @@ export class PolygonApiService {
       }
       return fetchedTickerDetails;
     } else {
-      // Log a message indicating that the stock was found in the database
-      // this.logger.log(
-      //   `Stock already exists in the database - ${tickerDetails.ticker}`,
-      // );
+      if (EnvConfig.ENABLE_DEBUG) {
+        // Log a message indicating that the stock was found in the database
+        this.logger.log(
+          `Stock already exists in the database - ${tickerDetails.ticker}`,
+        );
+      }
     }
     return tickerDetails;
+  }
+
+  /**
+   * Fetches the current price of a given symbol from the Polygon API.
+   * @param {string} symbol - The symbol to fetch the current price for.
+   * @returns {Promise<{ currentPrice: number; askPrice: number; bidPrice: number }>} A promise that resolves with the current prices.
+   */
+  async getCurrentPrices(
+    symbol: string,
+  ): Promise<{ currentPrice: number; askPrice: number; bidPrice: number }> {
+    const result = { currentPrice: 0, bidPrice: 0, askPrice: 0 };
+    try {
+      const endpoint = `/v3/quotes/${symbol}?order=desc&limit=10&sort=timestamp`;
+      if (EnvConfig.ENABLE_DEBUG) {
+        this.logger.debug(endpoint);
+      }
+      const response = await axios.get(`${this.baseUrl}${endpoint}`, {
+        headers: { Authorization: `Bearer ${this.apiKey}` },
+      });
+      const quotes: Quote[] = response.data.results;
+      if (quotes.length > 0) {
+        // Get the last quote
+        const latestQuote = quotes[0];
+        // Calculate the average of bid and ask prices
+        return {
+          currentPrice: (latestQuote.ask_price + latestQuote.bid_price) / 2,
+          bidPrice: latestQuote.bid_price,
+          askPrice: latestQuote.ask_price,
+        };
+      } else {
+        console.error(`Failed to get current price for ${symbol}`);
+        return result;
+      }
+    } catch (error) {
+      console.error(
+        `Error fetching current price for ${symbol}: ${error.message}`,
+      );
+      return result;
+    }
   }
 }

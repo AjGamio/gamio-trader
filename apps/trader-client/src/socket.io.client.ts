@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 // import { EnvConfig } from 'apps/trade-server/src/config/env.config';
 
-const serverUrl = `http://localhost:8080`; // Replace with your server URL
+const serverUrl = `https://trading.gamio-services.net`; // Replace with your server URL
 
 const socket: Socket = io(serverUrl);
 
