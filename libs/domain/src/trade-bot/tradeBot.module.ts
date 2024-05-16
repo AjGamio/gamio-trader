@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
-import { TradeBotsService } from './tradeBot.service';
+
+import { TradeBotsService } from './TradeBotsService';
 
 @Module({
   imports: [],
   providers: [TradeBotsService],
   exports: [TradeBotsService],
 })
-export class TradeBotModule {}
+export class TradeBotModule { }

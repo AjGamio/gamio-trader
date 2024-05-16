@@ -1,22 +1,32 @@
 // das.service.ts
 
-import { Injectable, Logger } from '@nestjs/common';
-import { TraderClient } from './client/trader-client';
-import { ITcpCommand } from './interfaces/iCommand';
-import { TraderCommandType } from './enums';
+import { FilterQuery, Model } from 'mongoose';
 import { Socket } from 'socket.io';
-import { EnvConfig } from '../config/env.config';
-import { CommandData, CommandDictionary } from './interfaces/iData';
+
 import {
-  ITickerData,
-  iTickerAverages,
-} from '../polygon/interfaces/iTickerData';
-import { LoginDto } from './common';
-import { PolygonApiService } from '../polygon/polygon.service';
-import { TradeBotsService } from '../trade-bot/tradebot.service';
-import { TradeBotOrder } from '../trade-bot/tradeBotOder.entity';
-import { Model } from 'mongoose';
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+
+import { EnvConfig } from '../config/env.config';
+import {
+  iTickerAverages,
+  ITickerData,
+} from '../polygon/interfaces/iTickerData';
+import { PolygonApiService } from '../polygon/polygon.service';
+import { TradeBotOrder } from '../trade-bot/tradeBotOder.entity';
+import { TradeBotsService } from '../trade-bot/tradeBot.service';
+import { TraderClient } from './client/trader-client';
+import { LoginDto } from './common';
+import { TraderCommandType } from './enums';
+import { ITcpCommand } from './interfaces/iCommand';
+import {
+  CommandData,
+  CommandDictionary,
+} from './interfaces/iData';
+import { POSRefreshCommand } from './commands/pos.refresh.command';
+import { Position } from '../trade-bot/positionEntity';
 
 @Injectable()
 export class DasService {
@@ -42,6 +52,23 @@ export class DasService {
   public setupTradeClient(loginDto: LoginDto) {
     this.loginDto = loginDto;
     this.initTradeClient();
+  }
+
+  public getPositions(options: {
+    skip: number;
+    limit: number;
+    sort: {
+      [x: string]: number;
+    };
+    where?: FilterQuery<Position>;
+  }): Promise<{ records: Position[]; total: number; }> {
+    return this.tradeBotService.findAllPositions(options);
+  }
+
+  public posRefresh(): void {
+    const posRefreshCommand = POSRefreshCommand.Instance;
+    this.logger.log(posRefreshCommand.Name);
+    this.enqueueCommand(posRefreshCommand);
   }
 
   private async processQueue(): Promise<void> {
@@ -174,10 +201,14 @@ export class DasService {
 
       if (result.acknowledged) {
         tickerOrderMsg = `Added new order for bot - ${order.botId} for symbol- ${order.symbol}`;
-        this.logger.log(tickerOrderMsg);
+        if (EnvConfig.ENABLE_DEBUG) {
+          this.logger.log(tickerOrderMsg);
+        }
       } else {
         tickerOrderMsg = `Unable to add new order for bot - ${order.botId} for symbol- ${order.symbol}`;
-        this.logger.warn(tickerOrderMsg);
+        if (EnvConfig.ENABLE_DEBUG) {
+          this.logger.warn(tickerOrderMsg);
+        }
       }
       if (tickerOrderMsg.length > 0) {
         this.emit('ticker-info', tickerOrderMsg);

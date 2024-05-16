@@ -9,6 +9,7 @@ import { TradeBot } from './tradeBot.entity';
 import { TradeBotOrder, TradeStatus, TradeType } from './tradeBotOder.entity';
 import { TradeOrder } from './tradeOrder.entity';
 import { EnvConfig } from '../config/env.config';
+import { Position } from './positionEntity';
 
 @Injectable()
 export class TradeBotsService {
@@ -19,6 +20,8 @@ export class TradeBotsService {
     private readonly tradeBotOrderModel: Model<TradeBotOrder>,
     @InjectModel(TradeOrder.name)
     private readonly tradeModel: Model<TradeOrder>,
+    @InjectModel(Position.name)
+    private readonly positionModel: Model<Position>,
   ) {
     this.logger = new Logger(TradeBotsService.name);
   }
@@ -34,6 +37,21 @@ export class TradeBotsService {
     const [records, total] = await Promise.all([
       this.tradeBotModel.find(options.where ?? {}, null, options).exec(),
       this.tradeBotModel.countDocuments(options.where ?? {}).exec(),
+    ]);
+    return { records, total };
+  }
+
+  async findAllPositions(options: {
+    skip: number;
+    limit: number;
+    sort: {
+      [x: string]: number;
+    };
+    where?: FilterQuery<Position>;
+  }): Promise<{ records: Position[]; total: number }> {
+    const [records, total] = await Promise.all([
+      this.positionModel.find(options.where ?? {}, null, options).exec(),
+      this.positionModel.countDocuments(options.where ?? {}).exec(),
     ]);
     return { records, total };
   }
@@ -222,5 +240,29 @@ export class TradeBotsService {
         err,
       );
     }
+  }
+
+  /**
+   * Finds a position by symbol and type, and updates its properties.
+   * @param symb The symbol of the position to update.
+   * @param type The type of the position to update.
+   * @param updateData The data to update in the position.
+   * @returns The updated position if found and updated, otherwise null.
+   */
+  async updatePosition(
+    symb: string,
+    type: number,
+    updateData: Position,
+  ): Promise<Position> {
+    // Set updatedAt field
+    updateData.updatedAt = new Date().toString();
+    return await this.positionModel.findOneAndUpdate(
+      { symb, type },
+      {
+        ...updateData,
+        $setOnInsert: { createdAt: updateData.createdAt || new Date() },
+      },
+      { new: true, upsert: true },
+    );
   }
 }

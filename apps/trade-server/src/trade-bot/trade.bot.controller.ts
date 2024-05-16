@@ -1,34 +1,36 @@
-import {
-  Controller,
-  Get,
-  Param,
-  Post,
-  Body,
-  Put,
-  Delete,
-  Query,
-  ParseIntPipe,
-  BadRequestException,
-  UseGuards,
-} from '@nestjs/common';
-import {
-  ApiOperation,
-  ApiQuery,
-  ApiResponse,
-  ApiParam,
-  ApiBody,
-  ApiTags,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
 import { OrderOrTradeType } from 'gamio/domain/das/interfaces/iData';
 import { TradeBot } from 'gamio/domain/trade-bot/tradeBot.entity';
 import {
   TradeBotOrder,
   TradeType,
 } from 'gamio/domain/trade-bot/tradeBotOder.entity';
+import { TradeBotsService } from 'gamio/domain/trade-bot/tradeBot.service';
 import { TradeOrder } from 'gamio/domain/trade-bot/tradeOrder.entity';
-import { TradeBotsService } from 'gamio/domain/trade-bot/tradebot.service';
 import { set } from 'lodash';
+
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+
 import { JwtAuthGuard } from '../guards/jwt.auth.guard';
 
 /**
@@ -39,7 +41,7 @@ import { JwtAuthGuard } from '../guards/jwt.auth.guard';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class TradeBotsController {
-  constructor(private readonly tradeBotsService: TradeBotsService) {}
+  constructor(private readonly tradeBotsService: TradeBotsService) { }
 
   /**
    * Get paginated and sorted trade orders.

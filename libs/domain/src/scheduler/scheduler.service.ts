@@ -168,6 +168,12 @@ export class SchedulerService {
     // this.dasService.emit('filteredTickers', this.tradeService.FilteredTickers);
   }
 
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async posRefresh() {
+    this.logger.log('Executing POS Refresh every 5 minutes');
+    this.dasService.posRefresh();
+  }
+
   private createOrderCommand(
     lowRange: number,
     highRange: number,

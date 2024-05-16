@@ -1,4 +1,3 @@
-import { TradeBotsService } from 'gamio/domain/trade-bot/tradebot.service';
 import {
   TradeStatus,
   TradeType,
@@ -13,6 +12,7 @@ import { TraderCommandType } from '../enums';
 import { CommandData, JsonData, Order, Trade } from '../interfaces/iData';
 import { GenericEventEmitter } from './event.processor';
 import { ResponseEventArgs } from './response.event.args';
+import { TradeBotsService } from 'gamio/domain/trade-bot/tradeBot.service';
 
 class ResponseProcessor extends EventEmitter {
   private readonly logger: Logger;

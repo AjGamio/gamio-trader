@@ -1,19 +1,21 @@
 import { Module } from '@nestjs/common';
-import { SchedulerService } from './scheduler.service';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ScheduleModule } from '@nestjs/schedule';
+
+import { DasLibModule } from '../das/das.module';
+import { DasService } from '../das/das.service';
+import { PolygonApiService } from '../polygon/polygon.service';
+import { Stock, StockSchema } from '../polygon/stock.entity';
+import { Position, PositionSchema } from '../trade-bot/positionEntity';
 import { TradeBot, TradeBotSchema } from '../trade-bot/tradeBot.entity';
 import {
   TradeBotOrder,
   TradeBotOrderSchema,
 } from '../trade-bot/tradeBotOder.entity';
-import { ScheduleModule } from '@nestjs/schedule';
-import { PolygonApiService } from '../polygon/polygon.service';
-import { TradeService } from '../trade/trade.service';
-import { DasLibModule } from '../das/das.module';
-import { DasService } from '../das/das.service';
-import { TradeBotsService } from '../trade-bot/tradebot.service';
 import { TradeOrder, TradeOrderSchema } from '../trade-bot/tradeOrder.entity';
-import { Stock, StockSchema } from '../polygon/stock.entity';
+import { TradeService } from '../trade/trade.service';
+import { SchedulerService } from './scheduler.service';
+import { TradeBotsService } from '../trade-bot/tradeBot.service';
 
 @Module({
   imports: [
@@ -23,6 +25,7 @@ import { Stock, StockSchema } from '../polygon/stock.entity';
       { name: TradeBotOrder.name, schema: TradeBotOrderSchema },
       { name: TradeOrder.name, schema: TradeOrderSchema },
       { name: Stock.name, schema: StockSchema },
+      { name: Position.name, schema: PositionSchema },
     ]),
     DasLibModule,
   ],

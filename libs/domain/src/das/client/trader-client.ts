@@ -1,13 +1,13 @@
 import { EventEmitter } from 'events';
 import { EnvConfig } from 'gamio/domain/config/env.config';
 import { PolygonApiService } from 'gamio/domain/polygon/polygon.service';
-import { TradeBotsService } from 'gamio/domain/trade-bot/tradebot.service';
 import {
   TradeStatus,
   TradeType,
 } from 'gamio/domain/trade-bot/tradeBotOder.entity';
+
 import { TradeOrder } from 'gamio/domain/trade-bot/tradeOrder.entity';
-import { set } from 'lodash';
+import { isNil, set } from 'lodash';
 import * as net from 'net';
 
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
@@ -21,6 +21,7 @@ import { ITcpCommand } from '../interfaces/iCommand';
 import { ICommandResult } from '../interfaces/iCommand.result';
 import { JsonData, Order, Position, Trade } from '../interfaces/iData';
 import { ResponseEventArgs } from '../processors/response.event.args';
+import { TradeBotsService } from 'gamio/domain/trade-bot/tradeBot.service';
 
 @Injectable()
 export class TraderClient extends EventEmitter implements OnModuleDestroy {
@@ -106,7 +107,13 @@ export class TraderClient extends EventEmitter implements OnModuleDestroy {
           }),
         );
         set(jsonData, 'POS', updatedData);
-        this.emit('trade-data', jsonData);
+        await Promise.allSettled(
+          updatedData.map(
+            async (d: any) =>
+              await this.tradeBotService.updatePosition(d.symb, d.type, d),
+          ),
+        );
+        // this.emit('trade-data', jsonData);
 
         const { Order: orders, Trade: trades } = jsonData;
         orders.forEach((o: Order) => {
@@ -137,23 +144,32 @@ export class TraderClient extends EventEmitter implements OnModuleDestroy {
         });
         trades.forEach((t: Trade) => {
           // this.logger.verbose(`DAS response: trade-${JSON.stringify(t)}`);
-          const trade: Partial<TradeOrder> = {
-            id: t.id,
-            token: t.orderid.toFixed(),
-            symb: t.symb,
-            bs: t['b/s'],
-            mktLmt: t['mkt/lmt'],
-            qty: isNaN(t.qty) ? 0 : Number(t.qty),
-            lvqty: 0,
-            cxlqty: 0,
-            price: isNaN(t.price) ? 0 : Number(t.price),
-            route: t.route,
-            time: t.time,
-            type: TradeType.TRADE,
-            // createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          this.tradeBotService.upsertBotOrder(trade as TradeOrder);
+          const order = orders.find((o) => o.id === t.orderid.toFixed());
+          if (!isNil(order)) {
+            const status = getTradeStatusFromString(order.status);
+            const orderToken =
+              order.id === 'Send_Rej' ? order['b/s'] : order.id;
+            const orderStatus =
+              order.id === 'Send_Rej' ? TradeStatus.REJECTED : status;
+            const trade: Partial<TradeOrder> = {
+              id: t.id,
+              token: orderToken,
+              symb: t.symb,
+              bs: t['b/s'],
+              mktLmt: t['mkt/lmt'],
+              qty: isNaN(t.qty) ? 0 : Number(t.qty),
+              lvqty: 0,
+              cxlqty: 0,
+              price: isNaN(t.price) ? 0 : Number(t.price),
+              route: t.route,
+              time: t.time,
+              type: TradeType.TRADE,
+              status: orderStatus,
+              // createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            };
+            this.tradeBotService.upsertBotOrder(trade as TradeOrder);
+          }
         });
       });
     });

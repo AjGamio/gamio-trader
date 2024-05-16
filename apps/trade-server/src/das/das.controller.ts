@@ -4,7 +4,9 @@ import {
   Get,
   HttpStatus,
   Logger,
+  ParseIntPipe,
   Post,
+  Query,
   Res,
   UseGuards,
 } from '@nestjs/common';
@@ -15,6 +17,7 @@ import {
   ApiResponse,
   ApiBody,
   ApiBearerAuth,
+  ApiQuery,
 } from '@nestjs/swagger';
 import {
   BuyInCommand,
@@ -37,6 +40,8 @@ import {
   TradeStatus,
   TradeType,
 } from 'gamio/domain/trade-bot/tradeBotOder.entity';
+import { isNil, isArray } from 'lodash';
+import { Position } from 'gamio/domain/trade-bot/positionEntity';
 
 @ApiTags('Das')
 @Controller('das')
@@ -161,10 +166,8 @@ export class DASController {
     description: 'POS refresh request accepted',
   })
   async posRefresh(@Res() res: Response): Promise<void> {
-    const posRefreshCommand = POSRefreshCommand.Instance;
-    this.logger.log(posRefreshCommand.Name);
-    this.dasService.enqueueCommand(posRefreshCommand);
-    this.dasService.closeConnection();
+    this.dasService.posRefresh();
+    // this.dasService.closeConnection();
     res.status(HttpStatus.ACCEPTED).json({ message: 'Processing' });
   }
 
@@ -212,41 +215,118 @@ export class DASController {
     @Body() sellTradeInputs: SellTradeDto[],
     @Res() res: Response,
   ): Promise<void> {
-    console.log(sellTradeInputs);
-    sellTradeInputs.map(async (s: SellTradeDto) => {
-      const tradeBotOderId = new Types.ObjectId();
-      const tradeBotOrder = {
-        _id: tradeBotOderId,
-        type: TradeType.ORDER,
-        bs: BuySellType.SELL,
-        symbol: s.symbol,
-        route: 'SMAT',
-        numberOfShares: s.quantity,
-        timeOfTrade: '',
-        tradeNumber: '',
-        // botId: new Types.ObjectId(t.bot._id.$oid),
-        // botName: t.bot.name,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        status: TradeStatus.PENDING,
-        message: '',
-        rawCommand: '',
-        token: generateNewOrderToken().toString(),
-      };
-      await this.dasService.addBotOrder(
-        tradeBotOrder as unknown as TradeBotOrder,
-      );
-      this.dasService.enqueueCommand(
-        new MarketOrderCommand(
-          tradeBotOrder.token.toString(),
-          OrderAction.Sell,
-          s.symbol,
-          'SMAT',
-          s.quantity.toString(),
-          TimeInForce.DayPlus,
-        ),
-      );
-    });
-    res.status(HttpStatus.ACCEPTED).json({ message: 'Processing' });
+    if (isNil(sellTradeInputs) || !isArray(sellTradeInputs)) {
+      res.status(HttpStatus.BAD_REQUEST).json({ message: 'no data provided' });
+    } else {
+      sellTradeInputs.map(async (s: SellTradeDto) => {
+        const tradeBotOderId = new Types.ObjectId();
+        const tradeBotOrder = {
+          _id: tradeBotOderId,
+          type: TradeType.ORDER,
+          bs: BuySellType.SELL,
+          symbol: s.symbol,
+          route: 'SMAT',
+          numberOfShares: s.quantity,
+          timeOfTrade: '',
+          tradeNumber: '',
+          botId: 'User Action',
+          botName: 'User',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          status: TradeStatus.PENDING,
+          message: '',
+          rawCommand: '',
+          token: generateNewOrderToken().toString(),
+        };
+        await this.dasService.addBotOrder(
+          tradeBotOrder as unknown as TradeBotOrder,
+        );
+        this.dasService.enqueueCommand(
+          new MarketOrderCommand(
+            tradeBotOrder.token.toString(),
+            OrderAction.Sell,
+            s.symbol,
+            'SMAT',
+            s.quantity.toString(),
+            TimeInForce.DayPlus,
+          ),
+        );
+      });
+      res.status(HttpStatus.ACCEPTED).json({ message: 'Processing' });
+    }
+  }
+
+  /**
+   * Get paginated and sorted positions.
+   * @param page - Page number
+   * @param limit - Number of items per page
+   * @param orderBy - Field to sort by
+   * @param orderDirection - Sort order (ASC or DESC)
+   * @returns Paginated and sorted positions
+   */
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Get('/pos')
+  @ApiOperation({ summary: 'Get paginated and sorted positions' })
+  @ApiResponse({
+    status: 200,
+    description: 'Paginated and sorted positions',
+    type: Position,
+    isArray: true,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Paginated and sorted positions',
+    type: Position,
+    isArray: true,
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Number of items per page',
+    example: 10,
+  })
+  @ApiQuery({
+    name: 'orderBy',
+    required: false,
+    type: String,
+    description: 'Field to sort by',
+    example: 'createdAt',
+  })
+  @ApiQuery({
+    name: 'orderDirection',
+    required: false,
+    enum: ['ASC', 'DESC'],
+    type: String,
+    description: 'Sort order (ASC or DESC)',
+    example: 'DESC',
+  })
+  async findAllOrders(
+    @Query('page', ParseIntPipe) page: number = 1,
+    @Query('limit', ParseIntPipe) limit: number = 10,
+    @Query('orderBy') orderBy: keyof Position = 'symb',
+    @Query('orderDirection') orderDirection: 'ASC' | 'DESC' = 'DESC',
+  ): Promise<{
+    records: Position[];
+    total: number;
+  }> {
+    page = page === 0 ? 1 : page;
+    const options = {
+      skip: (page - 1) * limit,
+      limit,
+      sort: {
+        [orderBy]: orderDirection === 'ASC' ? 1 : -1,
+      },
+    };
+
+    return this.dasService.getPositions(options);
   }
 }
