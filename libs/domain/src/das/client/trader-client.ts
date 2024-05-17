@@ -113,7 +113,11 @@ export class TraderClient extends EventEmitter implements OnModuleDestroy {
               await this.tradeBotService.updatePosition(d.symb, d.type, d),
           ),
         );
-        // this.emit('trade-data', jsonData);
+        this.emit('trade-data', {
+          BP: jsonData.BP,
+          Clients: jsonData.Clients,
+          STATUS: jsonData.STATUS,
+        });
 
         const { Order: orders, Trade: trades } = jsonData;
         orders.forEach((o: Order) => {

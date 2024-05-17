@@ -72,7 +72,7 @@ export class SchedulerService {
       this.tickerData = await this.polygonApiService.getMarketCap();
       this.logger.log(`tickerData- ${this.tickerData.length}`);
     }
-    this.dasService.emit('tickerAverages', tickerAverages);
+    // this.dasService.emit('tickerAverages', tickerAverages);
     await this.tradeService.startScanner(filteredBots, this.tickerData);
     const filteredTickers = cloneDeep(this.tradeService.FilteredTickers);
     filteredTickers?.map((t: FilteredTickersData) => {
@@ -343,6 +343,6 @@ export class SchedulerService {
   async fetchMarketCap() {
     this.tickerData = await this.polygonApiService.getMarketCap();
     this.logger.log(`tickerData- ${this.tickerData.length}`);
-    this.dasService.emit('tickerAverages', this.polygonApiService.averages);
+    // this.dasService.emit('tickerAverages', this.polygonApiService.averages);
   }
 }
