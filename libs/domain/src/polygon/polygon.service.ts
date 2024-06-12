@@ -10,7 +10,6 @@ import { EnvConfig } from '../config/env.config';
 import {
   calculateAverage,
   calculateAverageWithMinMax,
-  getCurrentTimestampInNanoseconds,
 } from '../das/common/trade.helper';
 import {
   iTickerAverages,

@@ -25,9 +25,13 @@ class Parameters {
   @IsNumber()
   marketCap: number;
 
-  @Prop({ required: true })
+  @Prop({ required: true, min: 0 })
   @IsNumber()
-  price: number;
+  minPrice: number;
+
+  @Prop({ required: true, min: 0 })
+  @IsNumber()
+  maxPrice: number;
 
   @Prop({ required: true })
   @IsNumber()

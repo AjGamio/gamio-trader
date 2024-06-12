@@ -77,7 +77,8 @@ export interface Criteria {
   botId: string | ObjectId;
   botName: string;
   percentChangePreviousClose: number;
-  price: number;
+  minPrice: number;
+  maxPrice: number;
   dailyVolume: number;
   marketCap: number;
   rsi: number;

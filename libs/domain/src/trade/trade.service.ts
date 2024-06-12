@@ -25,11 +25,12 @@ export class TradeService {
 
   public async startScanner(bots: ITradeBot[], tickers: ITickerData[]) {
     bots.forEach((bot: ITradeBot) => {
-      if (bot.strategies && bot.strategies.parameters) {
+      if (bot.strategies?.parameters) {
         const parameters = bot.strategies.parameters;
         const convertedStrategies = {
           percentChangePreviousClose: parameters.percentChangePreviousClose,
-          price: parameters.price,
+          minPrice: parameters.minPrice,
+          maxPrice: parameters.maxPrice,
           dailyVolume: parameters.dailyVolume,
           marketCap: parameters.marketCap,
           rsi: parameters.dailyRSI,
@@ -121,7 +122,9 @@ export class TradeService {
 
       return (
         todaysChangePerc >= criteria.percentChangePreviousClose &&
-        (price ? price >= criteria.price : false) &&
+        (price
+          ? price >= criteria.minPrice && price <= criteria.maxPrice
+          : false) &&
         (dailyVolume ? dailyVolume >= criteria.dailyVolume : false)
       );
     });

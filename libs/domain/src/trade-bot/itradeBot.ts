@@ -13,7 +13,8 @@ export interface ITradeBot {
     parameters: {
       percentChangePreviousClose: number;
       marketCap: number;
-      price: number;
+      minPrice: number;
+      maxPrice: number;
       percentPriceChangeLastXMinutes: number;
       percentPriceChangeLastXMinutesInterval: number;
       percentVolumeChangeLastXMinutes: number;
