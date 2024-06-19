@@ -32,7 +32,8 @@ export class TradeService {
           minPrice: parameters.minPrice,
           maxPrice: parameters.maxPrice,
           dailyVolume: parameters.dailyVolume,
-          marketCap: parameters.marketCap,
+          minMarketCap: parameters.minMarketCap,
+          maxMarketCap: parameters.maxMarketCap,
           rsi: parameters.dailyRSI,
           volumeFilters: [
             {
@@ -141,7 +142,11 @@ export class TradeService {
     criteria: Criteria,
     marketCap: ITickerData,
   ): boolean {
-    return marketCap !== null && marketCap.min.c >= criteria.marketCap;
+    return (
+      marketCap !== null &&
+      marketCap.min.c >= criteria.minMarketCap &&
+      marketCap.min.c <= criteria.maxMarketCap
+    );
   }
 
   private async filterTickersByMarketCap(
@@ -155,7 +160,8 @@ export class TradeService {
         if (
           tickerDetail &&
           tickerDetail.results &&
-          tickerDetail.results.market_cap >= criteria.marketCap
+          tickerDetail.results.market_cap >= criteria.minMarketCap &&
+          tickerDetail.results.market_cap <= criteria.maxMarketCap
         ) {
           set(ticker, 'marketCap', tickerDetail.results.market_cap);
           return ticker;

@@ -80,7 +80,8 @@ export interface Criteria {
   minPrice: number;
   maxPrice: number;
   dailyVolume: number;
-  marketCap: number;
+  minMarketCap: number;
+  maxMarketCap: number;
   rsi: number;
   volumeFilters: {
     minutes: number;

@@ -12,7 +12,8 @@ export interface ITradeBot {
   strategies: {
     parameters: {
       percentChangePreviousClose: number;
-      marketCap: number;
+      minMarketCap: number;
+      maxMarketCap: number;
       minPrice: number;
       maxPrice: number;
       percentPriceChangeLastXMinutes: number;
@@ -24,7 +25,7 @@ export interface ITradeBot {
       dailyRSI: number;
     };
     orders: {
-      numberOfShares: number;
+      totalSharePrice: number;
       stopLossPercent: number;
       takeProfitPercent: number;
       timeLimitStop: number;

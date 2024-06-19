@@ -23,7 +23,11 @@ class Parameters {
 
   @Prop({ required: true })
   @IsNumber()
-  marketCap: number;
+  minMarketCap: number;
+
+  @Prop({ required: true })
+  @IsNumber()
+  maxMarketCap: number;
 
   @Prop({ required: true, min: 0 })
   @IsNumber()
@@ -63,19 +67,19 @@ class Parameters {
 }
 
 class Orders {
-  @Prop({ required: true })
+  @Prop({ required: true, min: 0 })
   @IsNumber()
-  numberOfShares: number;
+  totalSharePrice: number;
 
-  @Prop({ required: true })
+  @Prop({ required: true, min: 0 })
   @IsNumber()
   stopLossPercent: number;
 
-  @Prop({ required: true })
+  @Prop({ required: true, min: 0 })
   @IsNumber()
   takeProfitPercent: number;
 
-  @Prop({ required: true })
+  @Prop({ required: true, min: 0 })
   @IsNumber()
   timeLimitStop: number;
 
@@ -87,7 +91,7 @@ class Orders {
   @IsString()
   marketOrLimit: 'MKT' | 'LMT';
 
-  @Prop({ required: true })
+  @Prop({ required: true, min: 0 })
   @IsNumber()
   limitOrderPercent: number;
 }

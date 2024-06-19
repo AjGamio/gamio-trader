@@ -95,7 +95,7 @@ export class SchedulerService {
           if (!isNil(tickerMarketCap)) {
             const { orders } = t.bot.strategies;
             const {
-              numberOfShares,
+              totalSharePrice,
               stopLossPercent,
               takeProfitPercent,
               timeLimitStop,
@@ -114,16 +114,18 @@ export class SchedulerService {
             );
 
             const tradeBotOderId = new Types.ObjectId();
+            const perSharePrice =
+              marketOrLimit === 'LMT'
+                ? longOrShort === 'long'
+                  ? tickerMarketCap.min.c + tickerCurrentPrice
+                  : tickerMarketCap.min.c - tickerCurrentPrice
+                : 0;
+            const numberOfShares = Math.floor(totalSharePrice / perSharePrice);
             const tradeBotOrder = {
               _id: tradeBotOderId,
               type: TradeType.ORDER,
               bs: longOrShort === 'long' ? BuySellType.BUY : BuySellType.SELL,
-              price:
-                marketOrLimit === 'LMT'
-                  ? longOrShort === 'long'
-                    ? tickerMarketCap.min.c + tickerCurrentPrice
-                    : tickerMarketCap.min.c - tickerCurrentPrice
-                  : 0,
+              price: perSharePrice,
               symbol: tickerMarketCap.ticker,
               route: 'SMAT',
               numberOfShares,
