@@ -13,10 +13,3 @@ export class StringBuilder {
     return this.value;
   }
 }
-
-// Usage example:
-const sb = new StringBuilder();
-sb.append('Hello, ');
-sb.append('world!');
-const result = sb.toString();
-console.log(result); // Output: Hello, world!

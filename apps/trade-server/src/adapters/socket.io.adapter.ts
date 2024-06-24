@@ -19,7 +19,7 @@ export class SocketIoAdapter extends IoAdapter {
         : this.httpServer;
 
     const corsOptions = {
-      origin: EnvConfig.ALLOWED_ORIGIN,
+      origin: EnvConfig.ALLOWED_ORIGINS,
       methods: ['GET', 'POST', 'PUT', 'DELETE'],
       allowedHeaders: ['Content-Type'],
     };

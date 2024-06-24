@@ -69,7 +69,7 @@ export class PolygonApiService {
         `${this.baseUrl}/v2/snapshot/locale/us/markets/stocks/tickers?apiKey=${this.apiKey}`,
       );
       const data = response.data;
-      this.prepareTickerMetadata(data.tickers);
+      // this.prepareTickerMetadata(data.tickers);
       return data.tickers;
     } catch (error) {
       console.error('Error fetching market cap:', error.message);
@@ -99,22 +99,24 @@ export class PolygonApiService {
     from: string,
     to: string,
   ): Promise<TickerAggregateDetailV2 | null> {
-    const url = `${this.baseUrl}/v2/aggs/ticker/${ticker}/range/${multiplier}/${timespan}/${from}/${to}?apiKey=${this.apiKey}`;
+    if (multiplier > 0) {
+      const url = `${this.baseUrl}/v2/aggs/ticker/${ticker}/range/${multiplier}/${timespan}/${from}/${to}?apiKey=${this.apiKey}`;
 
-    try {
-      const response = await axios.get<TickerAggregateDetailV2>(url);
+      try {
+        const response = await axios.get<TickerAggregateDetailV2>(url);
 
-      if (response.status !== 200) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+        if (response.status !== 200) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        return response.data;
+      } catch (error) {
+        console.error(error);
+        this.logger.error(
+          `Error fetching aggregated bar data for ticker-${ticker}, error: ${error.message}`,
+        );
+        return null;
       }
-
-      return response.data;
-    } catch (error) {
-      console.error(error);
-      this.logger.error(
-        `Error fetching aggregated bar data for ticker-${ticker}, error: ${error.message}`,
-      );
-      return null;
     }
   }
 

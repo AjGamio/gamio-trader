@@ -47,6 +47,7 @@ export class TraderClient extends EventEmitter implements OnModuleDestroy {
     );
     this._ipEndPoint = { address: ipAddress, port: port, family: 'ipv4' };
     this._tcpClient = new net.Socket();
+    this._tcpClient.setMaxListeners(EnvConfig.MAX_LISTENERS_COUNT); // Set to a number higher than the expected number of listeners
     this.logger = new Logger(this.constructor.name);
   }
 
@@ -70,6 +71,9 @@ export class TraderClient extends EventEmitter implements OnModuleDestroy {
         this.logger.warn('Error:', err.message);
         reject(err);
       });
+      // Removing the event listener when no longer needed
+      this._tcpClient.removeListener('disconnect', () => {});
+      this._tcpClient.removeListener('error', () => {});
       this._tcpClient.on('data', async (data) => {
         const eventData = new ResponseEventArgs(
           TraderCommandType.None,

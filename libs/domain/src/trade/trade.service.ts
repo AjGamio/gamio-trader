@@ -28,23 +28,29 @@ export class TradeService {
       if (bot.strategies?.parameters) {
         const parameters = bot.strategies.parameters;
         const convertedStrategies = {
-          percentChangePreviousClose: parameters.percentChangePreviousClose,
-          minPrice: parameters.minPrice,
-          maxPrice: parameters.maxPrice,
-          dailyVolume: parameters.dailyVolume,
-          minMarketCap: parameters.minMarketCap,
-          maxMarketCap: parameters.maxMarketCap,
-          rsi: parameters.dailyRSI,
+          percentChangePreviousClose: Number(
+            parameters.percentChangePreviousClose,
+          ),
+          minPrice: Number(parameters.minPrice),
+          maxPrice: Number(parameters.maxPrice),
+          dailyVolume: Number(parameters.dailyVolume),
+          minMarketCap: Number(parameters.minMarketCap),
+          maxMarketCap: Number(parameters.maxMarketCap),
+          rsi: Number(parameters.dailyRSI),
           volumeFilters: [
             {
-              minutes: parameters.percentVolumeChangeLastXMinutesInterval,
-              percentChange: parameters.percentVolumeChangeLastXMinutes,
+              minutes: Number(
+                parameters.percentVolumeChangeLastXMinutesInterval,
+              ),
+              percentChange: Number(parameters.percentVolumeChangeLastXMinutes),
             },
           ],
           priceFilters: [
             {
-              minutes: parameters.percentPriceChangeLastXMinutesInterval,
-              percentChange: parameters.percentPriceChangeLastXMinutes,
+              minutes: Number(
+                parameters.percentPriceChangeLastXMinutesInterval,
+              ),
+              percentChange: Number(parameters.percentPriceChangeLastXMinutes),
             },
           ],
         };
@@ -67,15 +73,18 @@ export class TradeService {
 
       filteredTickers = await this.filterTickersByMarketCap(
         criteria,
-        filteredTickers,
+        filteredTickers.slice(0, EnvConfig.TICKER_ORDER_QUEUE_LIMIT),
       );
 
       filteredTickers = await this.filterByPriceAndVolumeChangeXMinutes(
         criteria,
-        filteredTickers,
+        filteredTickers.slice(0, EnvConfig.TICKER_ORDER_QUEUE_LIMIT),
       );
 
-      filteredTickers = await this.filterByRSI(criteria, filteredTickers);
+      filteredTickers = await this.filterByRSI(
+        criteria,
+        filteredTickers.slice(0, EnvConfig.TICKER_ORDER_QUEUE_LIMIT),
+      );
 
       this.FilteredTickers.push({
         tickers: filteredTickers,
@@ -116,19 +125,53 @@ export class TradeService {
     }
   }
 
-  private async filterTickers(criteria: Criteria, tickers: ITickerData[]) {
-    return tickers.filter((ticker: ITickerData) => {
+  /**
+   * Filter tickers based on given criteria.
+   * @param {Criteria} criteria - Filtering criteria object.
+   * @param {ITickerData[]} tickers - Array of ticker data to filter.
+   * @returns {Promise<ITickerData[]>} - Filtered array of ticker data.
+   */
+  /**
+   * Filter tickers based on given criteria.
+   * @param {Criteria} criteria - Filtering criteria object.
+   * @param {ITickerData[]} tickers - Array of ticker data to filter.
+   * @returns {Promise<ITickerData[]>} - Filtered array of ticker data.
+   */
+  private async filterTickers(
+    criteria: Criteria,
+    tickers: ITickerData[],
+  ): Promise<ITickerData[]> {
+    const filteredTickers = tickers.filter((ticker: ITickerData) => {
       const { todaysChangePerc } = ticker;
-      const { c: price, v: dailyVolume } = ticker.min || {};
-
-      return (
-        todaysChangePerc >= criteria.percentChangePreviousClose &&
-        (price
-          ? price >= criteria.minPrice && price <= criteria.maxPrice
-          : false) &&
-        (dailyVolume ? dailyVolume >= criteria.dailyVolume : false)
-      );
+      const { c: price, v: volume } = ticker.min || {};
+      const { percentChangePreviousClose, minPrice, maxPrice, dailyVolume } =
+        criteria;
+      const tickersData = [];
+      if (Number(percentChangePreviousClose) > 0) {
+        if (Number(todaysChangePerc) >= Number(percentChangePreviousClose)) {
+          tickersData.push(ticker);
+        }
+      }
+      if (Number(minPrice) > 0) {
+        if (Number(price) >= Number(minPrice)) {
+          tickersData.push(ticker);
+        }
+      }
+      if (Number(maxPrice) > 0) {
+        if (Number(price) <= Number(maxPrice)) {
+          tickersData.push(ticker);
+        }
+      }
+      if (Number(dailyVolume) > 0) {
+        if (Number(volume) >= Number(dailyVolume)) {
+          tickersData.push(ticker);
+        }
+      }
+      // Filtering logic based on criteria
+      return tickersData;
     });
+
+    return filteredTickers.slice(0, EnvConfig.TICKER_ORDER_QUEUE_LIMIT);
   }
 
   private async fetchMarketCapForTicker(
@@ -149,40 +192,87 @@ export class TradeService {
     );
   }
 
+  /**
+   * Filter tickers by market capitalization based on given criteria.
+   * @param {Criteria} criteria - Filtering criteria object.
+   * @param {ITickerData[]} tickers - Array of ticker data to filter.
+   * @param {number} delay - Delay in milliseconds between each fetch call (default: 1000ms).
+   * @returns {Promise<ITickerData[]>} - Filtered array of ticker data.
+   */
   private async filterTickersByMarketCap(
     criteria: Criteria,
     tickers: ITickerData[],
-  ) {
-    const filteredTickers = await Promise.all(
-      tickers.map(async (ticker) => {
+  ): Promise<ITickerData[]> {
+    const filteredTickers: ITickerData[] = [];
+    const processedTickers: string[] = [];
+    if (EnvConfig.ENABLE_DEBUG) {
+      this.logger.verbose(
+        `Fetching market caps data for ${tickers.length} ticker symbols`,
+      );
+    }
+    for (let i = 0; i < tickers.length; i++) {
+      const ticker = tickers[i];
+      if (EnvConfig.ENABLE_DEBUG) {
+        this.logger.verbose(
+          `Fetching market cap data for [${i + 1}] ${ticker.ticker}`,
+        );
+      }
+
+      const tickerIndex = processedTickers.findIndex(
+        (t) => t === ticker.ticker,
+      );
+      if (tickerIndex === -1) {
+        // Fetch market capitalization for the ticker
         const tickerDetail = await this.fetchMarketCapForTicker(ticker);
 
+        const { minMarketCap, maxMarketCap } = criteria;
+
+        // Check if ticker's market cap meets the criteria
         if (
-          tickerDetail &&
-          tickerDetail.results &&
-          tickerDetail.results.market_cap >= criteria.minMarketCap &&
-          tickerDetail.results.market_cap <= criteria.maxMarketCap
+          (Number(tickerDetail?.results?.market_cap) && Number(minMarketCap) > 0
+            ? Number(tickerDetail?.results?.market_cap) >= Number(minMarketCap)
+            : true) &&
+          (Number(tickerDetail?.results?.market_cap) && Number(maxMarketCap) > 0
+            ? Number(tickerDetail?.results?.market_cap) <= Number(maxMarketCap)
+            : true)
         ) {
-          set(ticker, 'marketCap', tickerDetail.results.market_cap);
-          return ticker;
+          // If criteria is met, set the marketCap property on the ticker
+          set(ticker, 'marketCap', tickerDetail?.results?.market_cap);
+          filteredTickers.push(ticker); // Add the ticker with added marketCap property to the filtered list
         }
+        processedTickers.push(ticker.ticker);
+      }
+    }
 
-        return null;
-      }),
-    );
-
-    return filteredTickers.filter((ticker) => ticker !== null);
+    return filteredTickers;
   }
 
+  /**
+   * Filters tickers based on price and volume change over specified minutes.
+   * @param {Criteria} criteria - Filtering criteria object.
+   * @param {ITickerData[]} tickers - Array of ticker data to filter.
+   * @returns {Promise<ITickerData[]>} - Filtered array of ticker data.
+   */
   private async filterByPriceAndVolumeChangeXMinutes(
     criteria: Criteria,
     tickers: ITickerData[],
-  ) {
-    const filteredTickers = await Promise.all(
-      tickers.map(async (ticker) => {
-        const currentDate = new Date().toISOString().split('T')[0];
-        let isValidTicker = true;
+  ): Promise<ITickerData[]> {
+    const currentDate = new Date().toISOString().split('T')[0];
+    const filteredTickers: ITickerData[] = [];
+
+    // Iterate over each ticker asynchronously
+    for (const ticker of tickers) {
+      let isValidTicker = true;
+
+      // Apply volume filters if necessary
+      if (
+        criteria.volumeFilters.some((volumeFilter) => volumeFilter.minutes > 0)
+      ) {
         for (const volumeFilter of criteria.volumeFilters) {
+          if (volumeFilter.minutes <= 0) {
+            continue; // Skip this volume filter if minutes is 0 or negative
+          }
+
           const volumeBars = await this.polygonService.fetchAggregateBars(
             ticker.ticker,
             volumeFilter.minutes,
@@ -190,67 +280,106 @@ export class TradeService {
             currentDate,
             currentDate,
           );
-          if (volumeBars && volumeBars.status && volumeBars.results) {
+
+          // Check if volumeBars have valid status and results
+          if (volumeBars?.status && volumeBars?.results) {
             const volumeAggregates = volumeBars.results.map((bar) => bar.v);
             const volumeChangeLastXMinutes = calculateVolumeChange(
               volumeAggregates.slice(-volumeFilter.minutes),
             );
+
+            // Check volume change against percent change filter
             if (volumeChangeLastXMinutes < volumeFilter.percentChange) {
               isValidTicker = false;
-              break;
+              break; // Exit volumeFilter loop if condition fails
             }
+
+            // Assign volume change to ticker object
             ticker[`volumeChangeLast${volumeFilter.minutes}Minutes`] =
               volumeChangeLastXMinutes;
           }
+        }
+      }
 
-          if (isValidTicker) {
-            for (const priceFilter of criteria.priceFilters) {
-              const priceBars = await this.polygonService.fetchAggregateBars(
-                ticker.ticker,
-                priceFilter.minutes,
-                'minute',
-                currentDate,
-                currentDate,
-              );
-              if (priceBars && priceBars.status && priceBars.results) {
-                const priceAggregates = priceBars.results.map((bar) => bar.c);
-                const priceChangeLastXMinutes = calculatePriceChange(
-                  priceAggregates.slice(-priceFilter.minutes),
-                );
-                if (priceChangeLastXMinutes < priceFilter.percentChange) {
-                  isValidTicker = false;
-                  break;
-                }
-                ticker[`priceChangeLast${priceFilter.minutes}Minutes`] =
-                  priceChangeLastXMinutes;
-              }
+      // Apply price filters if necessary
+      if (
+        criteria.priceFilters.some((priceFilter) => priceFilter.minutes > 0)
+      ) {
+        for (const priceFilter of criteria.priceFilters) {
+          if (priceFilter.minutes <= 0) {
+            continue; // Skip this price filter if minutes is 0 or negative
+          }
+
+          const priceBars = await this.polygonService.fetchAggregateBars(
+            ticker.ticker,
+            priceFilter.minutes,
+            'minute',
+            currentDate,
+            currentDate,
+          );
+
+          // Check if priceBars have valid status and results
+          if (priceBars?.status && priceBars?.results) {
+            const priceAggregates = priceBars.results.map((bar) => bar.c);
+            const priceChangeLastXMinutes = calculatePriceChange(
+              priceAggregates.slice(-priceFilter.minutes),
+            );
+
+            // Check price change against percent change filter
+            if (priceChangeLastXMinutes < priceFilter.percentChange) {
+              isValidTicker = false;
+              break; // Exit priceFilter loop if condition fails
             }
+
+            // Assign price change to ticker object
+            ticker[`priceChangeLast${priceFilter.minutes}Minutes`] =
+              priceChangeLastXMinutes;
           }
         }
-        return isValidTicker ? ticker : null;
-      }),
-    );
+      }
 
-    return filteredTickers.filter((ticker) => ticker !== null);
+      // Add ticker to filteredTickers if it's valid
+      if (isValidTicker) {
+        filteredTickers.push(ticker);
+      }
+    }
+
+    return filteredTickers;
   }
 
-  private async filterByRSI(criteria: Criteria, tickers: ITickerData[]) {
-    const filteredTickers = await Promise.all(
-      tickers.map(async (ticker) => {
-        const rsi = await this.polygonService.fetchRSI(ticker.ticker); // this works
+  /**
+   * Filters tickers based on Relative Strength Index (RSI) criteria.
+   * @param {Criteria} criteria - Filtering criteria object.
+   * @param {ITickerData[]} tickers - Array of ticker data to filter.
+   * @returns {Promise<ITickerData[]>} - Filtered array of ticker data.
+   */
+  private async filterByRSI(
+    criteria: Criteria,
+    tickers: ITickerData[],
+  ): Promise<ITickerData[]> {
+    const filteredTickers: ITickerData[] = [];
+
+    // Iterate over each ticker asynchronously
+    for (const ticker of tickers) {
+      // Check if criteria.rsi is defined and valid
+      if (criteria.rsi && !isNaN(criteria.rsi)) {
+        const rsi = await this.polygonService.fetchRSI(ticker.ticker);
+
+        // Check if rsi data is valid and meets criteria
         if (
-          rsi &&
-          rsi.status &&
-          rsi.results.values?.length > 0 &&
-          rsi.results.values[0]?.value <= criteria.rsi
+          rsi?.results?.values?.length > 0 &&
+          rsi?.results?.values[0]?.value <= criteria.rsi
         ) {
           set(ticker, 'rsi', rsi.results.values[0]?.value);
-          return ticker;
+          filteredTickers.push(ticker);
         }
-        return null;
-      }),
-    );
-    return filteredTickers.filter((ticker) => ticker !== null);
+      } else {
+        // If criteria.rsi is not defined or not valid, include the ticker without RSI filtering
+        filteredTickers.push(ticker);
+      }
+    }
+
+    return filteredTickers;
   }
 
   // Function to compare arrays for equality

@@ -3,7 +3,7 @@ import { Model, Types } from 'mongoose';
 
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 
 import { EnvConfig } from '../config/env.config';
 import { LimitOrderCommand } from '../das/commands/limit.order.command';
@@ -39,10 +39,11 @@ export class SchedulerService {
     private readonly dasService: DasService,
   ) {
     this.logger = new Logger(SchedulerService.name);
+    this.logger.debug('EnvConfig.SCHEDULER.CRON', EnvConfig.SCHEDULER.CRON);
   }
 
   // Define a cron job to run every minute
-  @Cron(CronExpression.EVERY_30_MINUTES)
+  @Cron(EnvConfig.SCHEDULER.CRON.BOT_TRADE)
   async fetchActiveBots() {
     const startTime = convertTo24HourFormat(getCurrentTimeInHHMMFormat());
     const filteredBots = await this.tradeBotModel
@@ -54,7 +55,6 @@ export class SchedulerService {
         },
       })
       .exec();
-    this.logger.log('Executing every 30 minutes');
     if (filteredBots.length > 0) {
       this.logger.log(
         `filteredBots-${filteredBots.map((b) => b.name).join(' | ')}`,
@@ -67,12 +67,9 @@ export class SchedulerService {
         filteredBots.map((b) => b.name),
       );
     }
-    const tickerAverages = this.polygonApiService.averages;
-    if (!tickerAverages) {
-      this.tickerData = await this.polygonApiService.getMarketCap();
-      this.logger.log(`tickerData- ${this.tickerData.length}`);
-    }
-    // this.dasService.emit('tickerAverages', tickerAverages);
+
+    this.tickerData = await this.polygonApiService.getMarketCap();
+    this.logger.log(`tickerData- ${this.tickerData.length}`);
     await this.tradeService.startScanner(filteredBots, this.tickerData);
     const filteredTickers = cloneDeep(this.tradeService.FilteredTickers);
     filteredTickers?.map((t: FilteredTickersData) => {
@@ -114,51 +111,61 @@ export class SchedulerService {
             );
 
             const tradeBotOderId = new Types.ObjectId();
-            const perSharePrice =
-              marketOrLimit === 'LMT'
-                ? longOrShort === 'long'
-                  ? tickerMarketCap.min.c + tickerCurrentPrice
-                  : tickerMarketCap.min.c - tickerCurrentPrice
-                : 0;
-            const numberOfShares = Math.floor(totalSharePrice / perSharePrice);
-            const tradeBotOrder = {
-              _id: tradeBotOderId,
-              type: TradeType.ORDER,
-              bs: longOrShort === 'long' ? BuySellType.BUY : BuySellType.SELL,
-              price: perSharePrice,
-              symbol: tickerMarketCap.ticker,
-              route: 'SMAT',
-              numberOfShares,
-              stopLossPercent,
-              takeProfitPercent,
-              timeLimitStop,
-              timeOfTrade: '',
-              tradeNumber: '',
-              botId: new Types.ObjectId(t.bot._id.$oid),
-              botName: t.bot.name,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              status: TradeStatus.PENDING,
-              message: '',
-              rawCommand: '',
-              token: generateNewOrderToken().toString(),
-            };
+            const isLimitOrder = marketOrLimit === 'LMT';
+            const isLongPosition = longOrShort === 'long';
 
-            const orderCommand = this.createOrderCommand(
-              lowRange,
-              highRange,
-              tradeBotOrder,
-              marketOrLimit,
-              tickerCurrentPrice,
-            );
-            tradeBotOrder.rawCommand = orderCommand.ToString();
-            await this.dasService.addBotOrder(
-              tradeBotOrder as unknown as TradeBotOrder,
-            );
-            const rawCommand = `TRADE BOT ORDER COMMAND- ${tradeBotOrder.rawCommand}`;
-            this.logger.verbose(rawCommand);
-            await this.dasService.sendCommandToServer(orderCommand);
-            this.dasService.emit('ticker-info', rawCommand);
+            const perSharePrice = isLimitOrder
+              ? isLongPosition
+                ? tickerMarketCap.min.c + tickerCurrentPrice
+                : tickerMarketCap.min.c - tickerCurrentPrice
+              : 0;
+
+            if (perSharePrice > 0) {
+              const numberOfShares = Math.floor(
+                Number(totalSharePrice) / Number(perSharePrice),
+              );
+              if (numberOfShares > 0) {
+                const tradeBotOrder = {
+                  _id: tradeBotOderId,
+                  type: TradeType.ORDER,
+                  bs:
+                    longOrShort === 'long' ? BuySellType.BUY : BuySellType.SELL,
+                  price: perSharePrice,
+                  symbol: tickerMarketCap.ticker,
+                  route: 'SMAT',
+                  numberOfShares,
+                  stopLossPercent,
+                  takeProfitPercent,
+                  timeLimitStop,
+                  timeOfTrade: '',
+                  tradeNumber: '',
+                  botId: new Types.ObjectId(t.bot._id.$oid),
+                  botName: t.bot.name,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                  status: TradeStatus.PENDING,
+                  message: '',
+                  rawCommand: '',
+                  token: generateNewOrderToken().toString(),
+                };
+
+                const orderCommand = this.createOrderCommand(
+                  lowRange,
+                  highRange,
+                  tradeBotOrder,
+                  marketOrLimit,
+                  tickerCurrentPrice,
+                );
+                tradeBotOrder.rawCommand = orderCommand.ToString();
+                await this.dasService.addBotOrder(
+                  tradeBotOrder as unknown as TradeBotOrder,
+                );
+                const rawCommand = `TRADE BOT ORDER COMMAND- ${tradeBotOrder.rawCommand}`;
+                this.logger.verbose(rawCommand);
+                await this.dasService.sendCommandToServer(orderCommand);
+                this.dasService.emit('ticker-info', rawCommand);
+              }
+            }
           } else {
             const tickerMsg = `No market cap data found for ${tk.ticker}`;
             this.logger.warn(tickerMsg);
@@ -167,13 +174,14 @@ export class SchedulerService {
         });
       }
     });
+    this.logger.log(`Last scheduler run for bot trades: ${new Date()}`);
     // this.dasService.emit('filteredTickers', this.tradeService.FilteredTickers);
   }
 
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron(EnvConfig.SCHEDULER.CRON.DATA_REFRESH)
   async posRefresh() {
-    this.logger.log('Executing POS Refresh every 5 minutes');
     this.dasService.posRefresh();
+    this.logger.log(`Last scheduler run for data refresh: ${new Date()}`);
   }
 
   private createOrderCommand(
@@ -341,10 +349,11 @@ export class SchedulerService {
     );
   }
 
-  @Cron(CronExpression.EVERY_10_MINUTES)
+  @Cron(EnvConfig.SCHEDULER.CRON.MARKET_CAP)
   async fetchMarketCap() {
     this.tickerData = await this.polygonApiService.getMarketCap();
     this.logger.log(`tickerData- ${this.tickerData.length}`);
+    this.logger.log(`Last scheduler run for market caps: ${new Date()}`);
     // this.dasService.emit('tickerAverages', this.polygonApiService.averages);
   }
 }

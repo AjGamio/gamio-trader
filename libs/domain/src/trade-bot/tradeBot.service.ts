@@ -145,6 +145,7 @@ export class TradeBotsService {
   }
 
   async upsertBotOrder(order: TradeOrder) {
+    const msg = `[${order.type === TradeType.ORDER ? 'Order' : 'Trade'}] for symbol - ${order.symb} & token - ${order.token}`;
     try {
       const filter = {
         id: order.id,
@@ -168,26 +169,18 @@ export class TradeBotsService {
       });
 
       if (result.upsertedCount > 0) {
-        this.logger.log(`Added new order for symbol - ${order.symb}`);
+        this.logger.log(`Added new ${msg}`);
       } else if (result.modifiedCount > 0) {
         if (EnvConfig.ENABLE_DEBUG) {
-          this.logger.log(
-            `Updated existing [${order.type}] for symbol - ${order.symb}`,
-          );
+          this.logger.log(`Updated existing ${msg}`);
         }
-      } else {
-        if (EnvConfig.ENABLE_DEBUG) {
-          this.logger.warn(
-            `No changes made for [${order.type}] with symbol - ${order.symb}`,
-          );
-        }
+      } else if (EnvConfig.ENABLE_DEBUG) {
+        this.logger.warn(`No changes made for ${msg}`);
       }
 
       return order;
     } catch (err) {
-      this.logger.error(
-        `Unable to upsert [${order.type}] for symbol - ${order.symb} due to ${err.message}`,
-      );
+      this.logger.error(`Unable to upsert ${msg} due to ${err.message}`);
     }
   }
 
