@@ -168,7 +168,7 @@ export class TradeService {
         }
       }
       // Filtering logic based on criteria
-      return tickersData;
+      return tickersData.filter((t) => t.min.c > 0 && t.min.v > 0); // get only those tickers which have positive price & volume.
     });
 
     return filteredTickers.slice(0, EnvConfig.TICKER_ORDER_QUEUE_LIMIT);

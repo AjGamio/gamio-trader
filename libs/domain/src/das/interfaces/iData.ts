@@ -115,3 +115,19 @@ export interface Quote {
   ask_price: number; // Ask price
   bid_price: number; // Bid price
 }
+
+export interface PositionWithPrice {
+  name: string;
+  market: string;
+  primary_exchange: string;
+  currency_name: string;
+  sic_description: string;
+  symb: string;
+  type: number;
+  qty: number;
+  avgcost: number;
+  initqty: number;
+  initprice: number;
+  Realized: number;
+  CreatTime: string;
+}

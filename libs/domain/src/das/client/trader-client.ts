@@ -19,7 +19,13 @@ import { getTradeStatusFromString } from '../common/trade.helper';
 import { TraderCommandType } from '../enums';
 import { ITcpCommand } from '../interfaces/iCommand';
 import { ICommandResult } from '../interfaces/iCommand.result';
-import { JsonData, Order, Position, Trade } from '../interfaces/iData';
+import {
+  JsonData,
+  Order,
+  Position,
+  PositionWithPrice,
+  Trade,
+} from '../interfaces/iData';
 import { ResponseEventArgs } from '../processors/response.event.args';
 import { TradeBotsService } from 'gamio/domain/trade-bot/tradeBot.service';
 
@@ -48,6 +54,7 @@ export class TraderClient extends EventEmitter implements OnModuleDestroy {
     this._ipEndPoint = { address: ipAddress, port: port, family: 'ipv4' };
     this._tcpClient = new net.Socket();
     this._tcpClient.setMaxListeners(EnvConfig.MAX_LISTENERS_COUNT); // Set to a number higher than the expected number of listeners
+    this.setMaxListeners(EnvConfig.MAX_LISTENERS_COUNT); // Increase the max listeners for this instance as well
     this.logger = new Logger(this.constructor.name);
   }
 
@@ -83,33 +90,7 @@ export class TraderClient extends EventEmitter implements OnModuleDestroy {
           this.logger.log(eventData.data);
         }
         const jsonData = eventData.data as JsonData;
-        const updatedData = await Promise.all(
-          jsonData.POS.map(async (s) => {
-            await this.calculateRealizedAndUnrealized(s);
-            const tickerDetails = await this.polygonService.getStockDetails(
-              s.symb,
-            );
-            if (tickerDetails) {
-              const {
-                name,
-                market,
-                primary_exchange,
-                currency_name,
-                sic_description,
-              } = tickerDetails;
-              return {
-                ...s,
-                name,
-                market,
-                primary_exchange,
-                currency_name,
-                sic_description,
-              };
-            } else {
-              this.logger.error(`Ticker detail for ${s.symb} not found.`);
-            }
-          }),
-        );
+        const updatedData = await this.updateDataWithStockDetails(jsonData);
         set(jsonData, 'POS', updatedData);
         await Promise.allSettled(
           updatedData.map(
@@ -124,62 +105,78 @@ export class TraderClient extends EventEmitter implements OnModuleDestroy {
         });
 
         const { Order: orders, Trade: trades } = jsonData;
-        orders.forEach((o: Order) => {
-          // this.logger.verbose(`DAS response: order-${JSON.stringify(o)}`);
-          const status = getTradeStatusFromString(o.status);
-          const orderToken = o.token === 'Send_Rej' ? o['b/s'] : o.token;
-          const orderStatus =
-            o.token === 'Send_Rej' ? TradeStatus.REJECTED : status;
-          this.tradeBotService.updateTradeBotOrder(orderToken, o.id, status);
-          const trade: Partial<TradeOrder> = {
-            id: o.id,
-            token: orderToken,
-            symb: o.symb,
-            bs: o['b/s'],
-            mktLmt: o['mkt/lmt'],
-            qty: isNaN(o.qty) ? 0 : Number(o.qty),
-            lvqty: isNaN(o.lvqty) ? 0 : Number(o.lvqty),
-            cxlqty: isNaN(o.cxlqty) ? 0 : Number(o.cxlqty),
-            price: isNaN(o.price) ? 0 : Number(o.price),
-            route: o.route,
-            status: orderStatus,
-            time: o.time,
-            type: TradeType.ORDER,
-            // createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          this.tradeBotService.upsertBotOrder(trade as TradeOrder);
-        });
-        trades.forEach((t: Trade) => {
-          // this.logger.verbose(`DAS response: trade-${JSON.stringify(t)}`);
-          const order = orders.find((o) => o.id === t.orderid.toFixed());
-          if (!isNil(order)) {
-            const status = getTradeStatusFromString(order.status);
-            const orderToken =
-              order.id === 'Send_Rej' ? order['b/s'] : order.id;
-            const orderStatus =
-              order.id === 'Send_Rej' ? TradeStatus.REJECTED : status;
-            const trade: Partial<TradeOrder> = {
-              id: t.id,
-              token: orderToken,
-              symb: t.symb,
-              bs: t['b/s'],
-              mktLmt: t['mkt/lmt'],
-              qty: isNaN(t.qty) ? 0 : Number(t.qty),
-              lvqty: 0,
-              cxlqty: 0,
-              price: isNaN(t.price) ? 0 : Number(t.price),
-              route: t.route,
-              time: t.time,
-              type: TradeType.TRADE,
-              status: orderStatus,
-              // createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            };
-            this.tradeBotService.upsertBotOrder(trade as TradeOrder);
-          }
-        });
+        this.processOrderData(orders);
+        this.processTradeData(trades, orders);
       });
+    });
+  }
+
+  /**
+   * Processes trade data and updates orders accordingly.
+   * @param {Trade[]} trades - Array of trade data to process.
+   * @param {Order[]} orders - Array of orders to update based on trade data.
+   * @returns {void}
+   */
+  private processTradeData(trades: Trade[], orders: Order[]) {
+    trades.forEach((t: Trade) => {
+      const order = orders.find((o) => o.id === t.orderid.toFixed());
+      if (!isNil(order)) {
+        const status = getTradeStatusFromString(order.status);
+        const orderToken = order.id === 'Send_Rej' ? order['b/s'] : order.id;
+        const orderStatus =
+          order.id === 'Send_Rej' ? TradeStatus.REJECTED : status;
+        const trade: Partial<TradeOrder> = {
+          id: t.id,
+          token: orderToken,
+          symb: t.symb,
+          bs: t['b/s'],
+          mktLmt: t['mkt/lmt'],
+          qty: isNaN(t.qty) ? 0 : Number(t.qty),
+          lvqty: 0,
+          cxlqty: 0,
+          price: isNaN(t.price) ? 0 : Number(t.price),
+          route: t.route,
+          time: t.time,
+          type: TradeType.TRADE,
+          status: orderStatus,
+          // createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        this.tradeBotService.upsertBotOrder(trade as TradeOrder);
+      }
+    });
+  }
+
+  /**
+   * Processes an array of orders and performs necessary operations.
+   * @param {Order[]} orders - The array of orders to process.
+   * @returns {void}
+   */
+  private processOrderData(orders: Order[]) {
+    orders.forEach((o: Order) => {
+      const status = getTradeStatusFromString(o.status);
+      const orderToken = o.token === 'Send_Rej' ? o['b/s'] : o.token;
+      const orderStatus =
+        o.token === 'Send_Rej' ? TradeStatus.REJECTED : status;
+      this.tradeBotService.updateTradeBotOrder(orderToken, o.id, status);
+      const trade: Partial<TradeOrder> = {
+        id: o.id,
+        token: orderToken,
+        symb: o.symb,
+        bs: o['b/s'],
+        mktLmt: o['mkt/lmt'],
+        qty: isNaN(o.qty) ? 0 : Number(o.qty),
+        lvqty: isNaN(o.lvqty) ? 0 : Number(o.lvqty),
+        cxlqty: isNaN(o.cxlqty) ? 0 : Number(o.cxlqty),
+        price: isNaN(o.price) ? 0 : Number(o.price),
+        route: o.route,
+        status: orderStatus,
+        time: o.time,
+        type: TradeType.ORDER,
+        // createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      this.tradeBotService.upsertBotOrder(trade as TradeOrder);
     });
   }
 
@@ -296,5 +293,51 @@ export class TraderClient extends EventEmitter implements OnModuleDestroy {
         'can not close connection, there are active events in queue',
       );
     }
+  }
+
+  /**
+   * Updates the data by fetching additional stock details and calculating realized and unrealized values.
+   * @param {object} jsonData - The input data containing POS array.
+   * @returns {Promise<PositionWithPrice[]>} - The updated data with additional stock details.
+   */
+  private async updateDataWithStockDetails(
+    jsonData: JsonData,
+  ): Promise<PositionWithPrice[]> {
+    const updatedData: PositionWithPrice[] = [];
+
+    // Iterate over each POS item
+    for (const s of jsonData.POS) {
+      // Calculate realized and unrealized values
+      await this.calculateRealizedAndUnrealized(s);
+
+      // Fetch stock details from the polygon service
+      const tickerDetails = await this.polygonService.getStockDetails(s.symb);
+
+      // If ticker details are found, add them to the current POS item
+      if (tickerDetails) {
+        const {
+          name,
+          market,
+          primary_exchange,
+          currency_name,
+          sic_description,
+        } = tickerDetails;
+
+        // Merge ticker details with the current POS item
+        updatedData.push({
+          ...s,
+          name,
+          market,
+          primary_exchange,
+          currency_name,
+          sic_description,
+        });
+      } else {
+        // Log an error message if ticker details are not found
+        this.logger.error(`Ticker detail for ${s.symb} not found.`);
+      }
+    }
+
+    return updatedData;
   }
 }

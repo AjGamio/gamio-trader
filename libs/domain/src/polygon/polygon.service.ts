@@ -191,14 +191,13 @@ export class PolygonApiService {
         }
       }
       return fetchedTickerDetails;
-    } else {
-      if (EnvConfig.ENABLE_DEBUG) {
-        // Log a message indicating that the stock was found in the database
-        this.logger.log(
-          `Stock already exists in the database - ${tickerDetails.ticker}`,
-        );
-      }
+    } else if (EnvConfig.ENABLE_DEBUG) {
+      // Log a message indicating that the stock was found in the database
+      this.logger.log(
+        `Stock already exists in the database - ${tickerDetails.ticker}`,
+      );
     }
+
     return tickerDetails;
   }
 
