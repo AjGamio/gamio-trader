@@ -10,12 +10,16 @@ import { TradeBotOrder, TradeStatus, TradeType } from './tradeBotOder.entity';
 import { TradeOrder } from './tradeOrder.entity';
 import { EnvConfig } from '../config/env.config';
 import { Position } from './positionEntity';
+import CreateTradeBotDto from '../bot/dtos/create-bot.dto';
+import { BotModel } from '../bot/bot.model';
+import UpdateTradeBotDto from '../bot/dtos/update-bot.dto';
 
 @Injectable()
 export class TradeBotsService {
   private readonly logger: Logger;
   constructor(
     @InjectModel(TradeBot.name) private readonly tradeBotModel: Model<TradeBot>,
+    @InjectModel(BotModel.name) private readonly botModel: Model<BotModel>,
     @InjectModel(TradeBotOrder.name)
     private readonly tradeBotOrderModel: Model<TradeBotOrder>,
     @InjectModel(TradeOrder.name)
@@ -37,6 +41,21 @@ export class TradeBotsService {
     const [records, total] = await Promise.all([
       this.tradeBotModel.find(options.where ?? {}, null, options).exec(),
       this.tradeBotModel.countDocuments(options.where ?? {}).exec(),
+    ]);
+    return { records, total };
+  }
+
+  async findAllBotsv2(options: {
+    skip: number;
+    limit: number;
+    sort: {
+      [x: string]: number;
+    };
+    where?: FilterQuery<BotModel>;
+  }): Promise<{ records: BotModel[]; total: number }> {
+    const [records, total] = await Promise.all([
+      this.botModel.find(options.where ?? {}, null, options).exec(),
+      this.botModel.countDocuments(options.where ?? {}).exec(),
     ]);
     return { records, total };
   }
@@ -94,6 +113,14 @@ export class TradeBotsService {
     return tradeBot;
   }
 
+  async findByIdV2(id: string): Promise<BotModel> {
+    const tradeBot = await this.botModel.findById(id).exec();
+    if (!tradeBot) {
+      throw new NotFoundException(`TradeBot with ID ${id} not found`);
+    }
+    return tradeBot;
+  }
+
   async create(createTradeBotDto: TradeBot): Promise<TradeBot> {
     const botName = generateBotName();
     const botCount = await this.tradeBotModel.countDocuments({ name: botName });
@@ -105,6 +132,20 @@ export class TradeBotsService {
       name: botCount > 0 ? `${botName}-${botCount}` : botName,
     });
     await this.tradeBotModel.collection.insertOne(createdTradeBot, {});
+    return createdTradeBot;
+  }
+
+  async createV2(createTradeBotDto: CreateTradeBotDto): Promise<BotModel> {
+    const botName = generateBotName();
+    const botCount = await this.botModel.countDocuments({ name: botName });
+    let createdTradeBot = new this.botModel(createTradeBotDto);
+    createdTradeBot = Object.assign(createdTradeBot, createTradeBotDto);
+    createdTradeBot = Object.assign(createdTradeBot, {
+      updatedAt: new Date(),
+      createdAt: new Date(),
+      name: botCount > 0 ? `${botName}-${botCount}` : botName,
+    });
+    await this.botModel.collection.insertOne(createdTradeBot, {});
     return createdTradeBot;
   }
 
@@ -121,8 +162,28 @@ export class TradeBotsService {
     return updatedTradeBot;
   }
 
+  async updateV2(id: string, updateTradeBotDto: UpdateTradeBotDto): Promise<BotModel> {
+    updateTradeBotDto = Object.assign(updateTradeBotDto, {
+      updatedAt: new Date(),
+    });
+    const updatedTradeBot = await this.botModel
+      .findByIdAndUpdate(id, updateTradeBotDto, { new: true })
+      .exec();
+    if (!updatedTradeBot) {
+      throw new NotFoundException(`TradeBot with ID ${id} not found`);
+    }
+    return updatedTradeBot;
+  }
+
   async delete(id: string): Promise<void> {
     const result = await this.tradeBotModel.deleteOne({ _id: id }).exec();
+    if (result.deletedCount === 0) {
+      throw new NotFoundException(`TradeBot with ID ${id} not found`);
+    }
+  }
+
+  async deleteV2(id: string): Promise<void> {
+    const result = await this.botModel.deleteOne({ _id: id }).exec();
     if (result.deletedCount === 0) {
       throw new NotFoundException(`TradeBot with ID ${id} not found`);
     }

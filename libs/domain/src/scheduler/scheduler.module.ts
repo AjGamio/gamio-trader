@@ -16,6 +16,7 @@ import { TradeOrder, TradeOrderSchema } from '../trade-bot/tradeOrder.entity';
 import { TradeService } from '../trade/trade.service';
 import { SchedulerService } from './scheduler.service';
 import { TradeBotsService } from '../trade-bot/tradeBot.service';
+import { BotModel, BotSchema } from '../bot/bot.model';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { TradeBotsService } from '../trade-bot/tradeBot.service';
       { name: TradeOrder.name, schema: TradeOrderSchema },
       { name: Stock.name, schema: StockSchema },
       { name: Position.name, schema: PositionSchema },
+      { name: BotModel.name, schema: BotSchema },
     ]),
     DasLibModule,
   ],

@@ -34,6 +34,7 @@ export const EnvConfig = {
   },
   MAX_LISTENERS_COUNT: Number(process.env.MAX_LISTENERS_COUNT) ?? 15,
   SCHEDULER: {
+    DISABLED: process.env.DISABLE_SCHEDULER === 'true',
     CRON: {
       MARKET_CAP: process.env.MARKET_CAP_SCHEDULER_CRON ?? '0 */10 * * * *',
       BOT_TRADE: process.env.BOT_TRADE_SCHEDULER_CRON ?? '0 */15 * * * *',
