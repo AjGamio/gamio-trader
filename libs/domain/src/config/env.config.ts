@@ -41,4 +41,18 @@ export const EnvConfig = {
       DATA_REFRESH: process.env.DATA_REFRESH_SCHEDULER_CRON ?? '0 */20 * * * *',
     },
   },
+  REDIS: {
+    HOST: process.env.REDIS_HOST,
+    PORT: Number(process.env.REDIS_PORT),
+    USERNAME: process.env.REDIS_USERNAME,
+    PASSWORD: process.env.REDIS_PASSWORD,
+    ENABLED: process.env.REDIS_ENABLED === 'true',
+    URL: process.env.REDIS_URL ?? 'redis://localhost:6379',
+    CHANNELS: {
+      DAS_TASK_SCHEDULER: process.env.DAS_TASK_SCHEDULER_CHANNEL,
+      DAS_WORKER: process.env.DAS_WORKER_CHANNEL,
+      DAS_CONSOLE: process.env.DAS_CONSOLE_CHANNEL,
+      DAS_BOT_EVENT_CHANNEL: process.env.DAS_BOT_EVENT_CHANNEL,
+    },
+  },
 };

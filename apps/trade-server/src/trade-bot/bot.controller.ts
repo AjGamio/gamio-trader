@@ -121,7 +121,7 @@ export class BotController {
 
     switch (type) {
       case OrderOrTradeType.Bots:
-        return await this.tradeBotService.findAllBotsv2(options);
+        return await this.tradeBotService.findAllBotsV2(options);
       case OrderOrTradeType.BotTrades:
         return await this.tradeBotService.findAllOrders(options);
 

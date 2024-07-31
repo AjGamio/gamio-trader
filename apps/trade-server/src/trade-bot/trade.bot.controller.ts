@@ -41,7 +41,7 @@ import { JwtAuthGuard } from '../guards/jwt.auth.guard';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class TradeBotsController {
-  constructor(private readonly tradeBotsService: TradeBotsService) { }
+  constructor(private readonly tradeBotsService: TradeBotsService) {}
 
   /**
    * Get paginated and sorted trade orders.

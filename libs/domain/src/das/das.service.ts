@@ -1,12 +1,8 @@
 // das.service.ts
-
 import { FilterQuery, Model } from 'mongoose';
 import { Socket } from 'socket.io';
 
-import {
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 
 import { EnvConfig } from '../config/env.config';
@@ -21,12 +17,17 @@ import { TraderClient } from './client/trader-client';
 import { LoginDto } from './common';
 import { TraderCommandType } from './enums';
 import { ITcpCommand } from './interfaces/iCommand';
-import {
-  CommandData,
-  CommandDictionary,
-} from './interfaces/iData';
+import { CommandData, CommandDictionary } from './interfaces/iData';
 import { POSRefreshCommand } from './commands/pos.refresh.command';
 import { Position } from '../trade-bot/positionEntity';
+import { RedisService } from '../redis/redis.service';
+import {
+  BotEventData,
+  DASEventData,
+  MessageType,
+  ProcessingStatus,
+} from './interfaces/iEventData';
+import { mapToMessageType, mapToProcessingStatus } from './common/data.helper';
 
 @Injectable()
 export class DasService {
@@ -42,11 +43,39 @@ export class DasService {
   constructor(
     private readonly polygonService: PolygonApiService,
     private readonly tradeBotService: TradeBotsService,
+    private readonly redisService: RedisService,
     @InjectModel(TradeBotOrder.name)
     private readonly tradeBotOrderModel: Model<TradeBotOrder>,
   ) {
     this.traderClientConnectionStatus = 'Connected';
     this.logger.log(`Connected client with id: ${this.client?.id}`);
+    this.subscribeToDASChannels();
+  }
+
+  private async subscribeToDASChannels() {
+    await this.redisService.subscribe(
+      EnvConfig.REDIS.CHANNELS.DAS_WORKER,
+      (message: DASEventData) => {
+        this.logger.log('das worker events message', message);
+        this.client?.emit('das-worker-events', message);
+      },
+    );
+
+    await this.redisService.subscribe(
+      EnvConfig.REDIS.CHANNELS.DAS_BOT_EVENT_CHANNEL,
+      (message: BotEventData) => {
+        const status: ProcessingStatus = mapToProcessingStatus(
+          message['Status'],
+        );
+        const messageType: MessageType = mapToMessageType(
+          message['MessageType'],
+        );
+        message['MessageType'] = messageType;
+        message['Status'] = status;
+        this.logger.log('das bot events message', message);
+        this.client?.emit('das-bot-events', message);
+      },
+    );
   }
 
   public setupTradeClient(loginDto: LoginDto) {
@@ -61,7 +90,7 @@ export class DasService {
       [x: string]: number;
     };
     where?: FilterQuery<Position>;
-  }): Promise<{ records: Position[]; total: number; }> {
+  }): Promise<{ records: Position[]; total: number }> {
     return this.tradeBotService.findAllPositions(options);
   }
 

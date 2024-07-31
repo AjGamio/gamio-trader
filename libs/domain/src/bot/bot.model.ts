@@ -6,6 +6,7 @@ import {
   ParametersType,
   OrderOptions,
   BotUserCredentials,
+  SymbolsType,
 } from './nested.bot.classes';
 
 @Schema({
@@ -23,6 +24,9 @@ export class BotModel extends Document {
   @Prop({ required: true, type: Date })
   @IsDateString()
   createdAt: string;
+
+  @Prop({ type: SymbolsType, required: true })
+  symbols: SymbolsType;
 
   @Prop({ type: ParametersType, required: true })
   @ValidateNested()

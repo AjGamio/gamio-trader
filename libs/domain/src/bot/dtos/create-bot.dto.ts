@@ -4,6 +4,7 @@ import {
   ParametersType,
   OrderOptions,
   BotUserCredentials,
+  SymbolsType,
 } from '../nested.bot.classes';
 
 class CreateTradeBotDto {
@@ -15,6 +16,10 @@ class CreateTradeBotDto {
 
   @IsDateString()
   createdAt?: string;
+
+  @ValidateNested()
+  @Type(() => ParametersType)
+  symbols: SymbolsType;
 
   @ValidateNested()
   @Type(() => ParametersType)

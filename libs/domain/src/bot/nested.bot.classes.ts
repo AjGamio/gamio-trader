@@ -86,6 +86,14 @@ export class Market {
   enabled: boolean;
 }
 
+export class SymbolsType {
+  @IsString()
+  blacklisted: string;
+
+  @IsString()
+  whitelisted: string;
+}
+
 export class ParametersType {
   @Type(() => ActiveTimes)
   activeTimes: ActiveTimes;

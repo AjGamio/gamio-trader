@@ -95,4 +95,8 @@ export class DasGateway
     const response = `Server received: ${message}`;
     client.emit('testMessageResponse', response);
   }
+
+  async publish(channel: string, message: any): Promise<void> {
+    this.server.emit(channel, message);
+  }
 }

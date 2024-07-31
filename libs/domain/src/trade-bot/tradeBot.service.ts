@@ -45,7 +45,7 @@ export class TradeBotsService {
     return { records, total };
   }
 
-  async findAllBotsv2(options: {
+  async findAllBotsV2(options: {
     skip: number;
     limit: number;
     sort: {
