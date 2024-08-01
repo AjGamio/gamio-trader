@@ -47,7 +47,9 @@ export const EnvConfig = {
     USERNAME: process.env.REDIS_USERNAME,
     PASSWORD: process.env.REDIS_PASSWORD,
     ENABLED: process.env.REDIS_ENABLED === 'true',
-    URL: process.env.REDIS_URL ?? 'redis://localhost:6379',
+    URL:
+      process.env.REDIS_URL ??
+      `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
     CHANNELS: {
       DAS_TASK_SCHEDULER: process.env.DAS_TASK_SCHEDULER_CHANNEL,
       DAS_WORKER: process.env.DAS_WORKER_CHANNEL,
