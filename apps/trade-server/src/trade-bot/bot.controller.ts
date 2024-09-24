@@ -1,15 +1,27 @@
+import { BotModel } from 'gamio/domain/bot/bot.model';
+import CreateTradeBotDto from 'gamio/domain/bot/dtos/create-bot.dto';
+import UpdateTradeBotDto from 'gamio/domain/bot/dtos/update-bot.dto';
+import { OrderOrTradeType } from 'gamio/domain/das/interfaces/iData';
+import { TradeBotsService } from 'gamio/domain/trade-bot/tradeBot.service';
 import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  Delete,
-  UseGuards,
-  Query,
-  ParseIntPipe,
+  TradeBotOrder,
+  TradeType,
+} from 'gamio/domain/trade-bot/tradeBotOder.entity';
+import { TradeOrder } from 'gamio/domain/trade-bot/tradeOrder.entity';
+import { set } from 'lodash';
+
+import {
   BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
   Put,
+  Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -20,18 +32,8 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { BotModel } from 'gamio/domain/bot/bot.model';
-import CreateTradeBotDto from 'gamio/domain/bot/dtos/create-bot.dto';
-import UpdateTradeBotDto from 'gamio/domain/bot/dtos/update-bot.dto';
+
 import { JwtAuthGuard } from '../guards/jwt.auth.guard';
-import { TradeBotsService } from 'gamio/domain/trade-bot/tradeBot.service';
-import {
-  TradeBotOrder,
-  TradeType,
-} from 'gamio/domain/trade-bot/tradeBotOder.entity';
-import { TradeOrder } from 'gamio/domain/trade-bot/tradeOrder.entity';
-import { OrderOrTradeType } from 'gamio/domain/das/interfaces/iData';
-import { set } from 'lodash';
 
 @Controller('bots/v2')
 @ApiTags('Trade Bots V2')
@@ -209,6 +211,6 @@ export class BotController {
     description: 'No content',
   })
   delete(@Param('id') id: string): Promise<void> {
-    return this.tradeBotService.delete(id);
+    return this.tradeBotService.deleteV2(id);
   }
 }
