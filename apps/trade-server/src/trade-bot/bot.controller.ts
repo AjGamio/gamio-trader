@@ -1,10 +1,12 @@
+import { BotModel } from 'gamio/domain/bot/bot.model';
+import CreateTradeBotDto from 'gamio/domain/bot/dtos/create-bot.dto';
+import UpdateTradeBotDto from 'gamio/domain/bot/dtos/update-bot.dto';
 import { OrderOrTradeType } from 'gamio/domain/das/interfaces/iData';
-import { TradeBot } from 'gamio/domain/trade-bot/tradeBot.entity';
+import { TradeBotsService } from 'gamio/domain/trade-bot/tradeBot.service';
 import {
   TradeBotOrder,
   TradeType,
 } from 'gamio/domain/trade-bot/tradeBotOder.entity';
-import { TradeBotsService } from 'gamio/domain/trade-bot/tradeBot.service';
 import { TradeOrder } from 'gamio/domain/trade-bot/tradeOrder.entity';
 import { set } from 'lodash';
 
@@ -33,15 +35,12 @@ import {
 
 import { JwtAuthGuard } from '../guards/jwt.auth.guard';
 
-/**
- * Controller for managing trade bots.
- */
-@ApiTags('Trade Bots')
-@Controller('trade-bots')
+@Controller('bots/v2')
+@ApiTags('Trade Bots V2')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
-export class TradeBotsController {
-  constructor(private readonly tradeBotsService: TradeBotsService) {}
+export class BotController {
+  constructor(private readonly tradeBotService: TradeBotsService) {}
 
   /**
    * Get paginated and sorted trade orders.
@@ -110,7 +109,7 @@ export class TradeBotsController {
     @Query('orderBy') orderBy: keyof TradeBotOrder = 'timeOfTrade',
     @Query('orderDirection') orderDirection: 'ASC' | 'DESC' = 'DESC',
   ): Promise<{
-    records: TradeBot[] | TradeBotOrder[] | TradeOrder[];
+    records: BotModel[] | TradeBotOrder[] | TradeOrder[];
     total: number;
   }> {
     page = page === 0 ? 1 : page;
@@ -124,9 +123,9 @@ export class TradeBotsController {
 
     switch (type) {
       case OrderOrTradeType.Bots:
-        return await this.tradeBotsService.findAllBots(options);
+        return await this.tradeBotService.findAllBotsV2(options);
       case OrderOrTradeType.BotTrades:
-        return await this.tradeBotsService.findAllOrders(options);
+        return await this.tradeBotService.findAllOrders(options);
 
       case OrderOrTradeType.Orders:
       case OrderOrTradeType.Trades:
@@ -136,7 +135,7 @@ export class TradeBotsController {
               ? TradeType.ORDER
               : TradeType.TRADE,
         });
-        return await this.tradeBotsService.findAllTrades(options);
+        return await this.tradeBotService.findAllTrades(options);
 
       default:
         throw new BadRequestException(`Invalid 'type' parameter: ${type}`);
@@ -154,10 +153,10 @@ export class TradeBotsController {
   @ApiResponse({
     status: 200,
     description: 'Trade bot details',
-    type: TradeBot,
+    type: BotModel,
   })
-  findById(@Param('id') id: string): Promise<TradeBot> {
-    return this.tradeBotsService.findById(id);
+  findById(@Param('id') id: string): Promise<BotModel> {
+    return this.tradeBotService.findByIdV2(id);
   }
 
   /**
@@ -167,14 +166,14 @@ export class TradeBotsController {
    */
   @Post()
   @ApiOperation({ summary: 'Create a new trade bot' })
-  @ApiBody({ type: TradeBot, description: 'Trade bot details' })
+  @ApiBody({ type: BotModel, description: 'Trade bot details' })
   @ApiResponse({
     status: 201,
     description: 'Created trade bot',
-    type: TradeBot,
+    type: BotModel,
   })
-  create(@Body() createTradeBotDto: TradeBot): Promise<TradeBot> {
-    return this.tradeBotsService.create(createTradeBotDto);
+  create(@Body() createTradeBotDto: CreateTradeBotDto): Promise<BotModel> {
+    return this.tradeBotService.createV2(createTradeBotDto);
   }
 
   /**
@@ -186,17 +185,17 @@ export class TradeBotsController {
   @Put(':id')
   @ApiOperation({ summary: 'Update trade bot details' })
   @ApiParam({ name: 'id', type: String, description: 'Trade bot ID' })
-  @ApiBody({ type: TradeBot, description: 'Updated trade bot details' })
+  @ApiBody({ type: BotModel, description: 'Updated trade bot details' })
   @ApiResponse({
     status: 200,
     description: 'Updated trade bot',
-    type: TradeBot,
+    type: BotModel,
   })
   update(
     @Param('id') id: string,
-    @Body() updateTradeBotDto: TradeBot,
-  ): Promise<TradeBot> {
-    return this.tradeBotsService.update(id, updateTradeBotDto);
+    @Body() updateTradeBotDto: UpdateTradeBotDto,
+  ): Promise<BotModel> {
+    return this.tradeBotService.updateV2(id, updateTradeBotDto);
   }
 
   /**
@@ -212,6 +211,6 @@ export class TradeBotsController {
     description: 'No content',
   })
   delete(@Param('id') id: string): Promise<void> {
-    return this.tradeBotsService.delete(id);
+    return this.tradeBotService.deleteV2(id);
   }
 }

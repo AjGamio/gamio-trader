@@ -45,143 +45,156 @@ export class SchedulerService {
   // Define a cron job to run every minute
   @Cron(EnvConfig.SCHEDULER.CRON.BOT_TRADE)
   async fetchActiveBots() {
-    const startTime = convertTo24HourFormat(getCurrentTimeInHHMMFormat());
-    const filteredBots = await this.tradeBotModel
-      .find({
-        botActiveTimes: {
-          $elemMatch: {
-            $or: [{ start: { $lte: startTime } }, { end: { $gte: startTime } }],
+    if (!EnvConfig.SCHEDULER.DISABLED) {
+      const startTime = convertTo24HourFormat(getCurrentTimeInHHMMFormat());
+      const filteredBots = await this.tradeBotModel
+        .find({
+          botActiveTimes: {
+            $elemMatch: {
+              $or: [
+                { start: { $lte: startTime } },
+                { end: { $gte: startTime } },
+              ],
+            },
           },
-        },
-      })
-      .exec();
-    if (filteredBots.length > 0) {
-      this.logger.log(
-        `filteredBots-${filteredBots.map((b) => b.name).join(' | ')}`,
-      );
-    }
-    if (this.dasService.client) {
-      this.dasService.client.emit('ping', 'Executing every 10 minutes');
-      this.dasService.client.emit(
-        'filteredBots',
-        filteredBots.map((b) => b.name),
-      );
-    }
-
-    this.tickerData = await this.polygonApiService.getMarketCap();
-    this.logger.log(`tickerData- ${this.tickerData.length}`);
-    await this.tradeService.startScanner(filteredBots, this.tickerData);
-    const filteredTickers = cloneDeep(this.tradeService.FilteredTickers);
-    filteredTickers?.map((t: FilteredTickersData) => {
-      if (t.status === 'waiting') {
-        t.processingDateTime = { start: new Date(), finish: new Date() };
-        const tickerMsg = `Processing filtered tickers data for bot- ${t.bot.name} [${t.bot._id}] at - ${t.processingDateTime.start}`;
-        this.logger.verbose(tickerMsg);
-        this.dasService.emit('ticker-info', tickerMsg);
-        const limit = EnvConfig.TICKER_ORDER_QUEUE_LIMIT;
-        const queuedTickers = t.tickers.slice(0, limit);
-        const tickerOrderMsg = `Creating new orders for ${queuedTickers.map(
-          (t) => t.ticker,
-        )} tickers`;
-        this.logger.log(tickerOrderMsg);
-        this.dasService.emit('ticker-info', tickerOrderMsg);
-        queuedTickers?.map(async (tk: ITickerData) => {
-          const tickerMarketCap = this.tickerData?.find((td: ITickerData) => {
-            return td.ticker === tk.ticker;
-          });
-          if (!isNil(tickerMarketCap)) {
-            const { orders } = t.bot.strategies;
-            const {
-              totalSharePrice,
-              stopLossPercent,
-              takeProfitPercent,
-              timeLimitStop,
-              longOrShort,
-              marketOrLimit,
-              limitOrderPercent,
-            } = orders;
-            const tickerCurrentPrice = parseFloat(
-              (tickerMarketCap.min.c * limitOrderPercent).toFixed(2),
-            );
-            const highRange = parseFloat(
-              (tickerMarketCap.min.c * takeProfitPercent).toFixed(2),
-            );
-            const lowRange = parseFloat(
-              (tickerMarketCap.min.c * stopLossPercent).toFixed(2),
-            );
-
-            const tradeBotOderId = new Types.ObjectId();
-            const isLimitOrder = marketOrLimit === 'LMT';
-            const isLongPosition = longOrShort === 'long';
-
-            const perSharePrice = isLimitOrder
-              ? isLongPosition
-                ? tickerMarketCap.min.c + tickerCurrentPrice
-                : tickerMarketCap.min.c - tickerCurrentPrice
-              : 0;
-
-            if (perSharePrice > 0) {
-              const numberOfShares = Math.floor(
-                Number(totalSharePrice) / Number(perSharePrice),
-              );
-              if (numberOfShares > 0) {
-                const tradeBotOrder = {
-                  _id: tradeBotOderId,
-                  type: TradeType.ORDER,
-                  bs:
-                    longOrShort === 'long' ? BuySellType.BUY : BuySellType.SELL,
-                  price: perSharePrice,
-                  symbol: tickerMarketCap.ticker,
-                  route: 'SMAT',
-                  numberOfShares,
-                  stopLossPercent,
-                  takeProfitPercent,
-                  timeLimitStop,
-                  timeOfTrade: '',
-                  tradeNumber: '',
-                  botId: new Types.ObjectId(t.bot._id.$oid),
-                  botName: t.bot.name,
-                  createdAt: new Date(),
-                  updatedAt: new Date(),
-                  status: TradeStatus.PENDING,
-                  message: '',
-                  rawCommand: '',
-                  token: generateNewOrderToken().toString(),
-                };
-
-                const orderCommand = this.createOrderCommand(
-                  lowRange,
-                  highRange,
-                  tradeBotOrder,
-                  marketOrLimit,
-                  tickerCurrentPrice,
-                );
-                tradeBotOrder.rawCommand = orderCommand.ToString();
-                await this.dasService.addBotOrder(
-                  tradeBotOrder as unknown as TradeBotOrder,
-                );
-                const rawCommand = `TRADE BOT ORDER COMMAND- ${tradeBotOrder.rawCommand}`;
-                this.logger.verbose(rawCommand);
-                await this.dasService.sendCommandToServer(orderCommand);
-                this.dasService.emit('ticker-info', rawCommand);
-              }
-            }
-          } else {
-            const tickerMsg = `No market cap data found for ${tk.ticker}`;
-            this.logger.warn(tickerMsg);
-            this.dasService.emit('ticker-info', tickerMsg);
-          }
-        });
+        })
+        .exec();
+      if (filteredBots.length > 0) {
+        this.logger.log(
+          `filteredBots-${filteredBots.map((b) => b.name).join(' | ')}`,
+        );
       }
-    });
-    this.logger.log(`Last scheduler run for bot trades: ${new Date()}`);
-    // this.dasService.emit('filteredTickers', this.tradeService.FilteredTickers);
+      if (this.dasService.client) {
+        this.dasService.client.emit('ping', 'Executing every 10 minutes');
+        this.dasService.client.emit(
+          'filteredBots',
+          filteredBots.map((b) => b.name),
+        );
+      }
+
+      this.tickerData = await this.polygonApiService.getMarketCap();
+      this.logger.log(`tickerData- ${this.tickerData.length}`);
+      await this.tradeService.startScanner(filteredBots, this.tickerData);
+      const filteredTickers = cloneDeep(this.tradeService.FilteredTickers);
+      filteredTickers?.map((t: FilteredTickersData) => {
+        if (t.status === 'waiting') {
+          t.processingDateTime = { start: new Date(), finish: new Date() };
+          const tickerMsg = `Processing filtered tickers data for bot- ${t.bot.name} [${t.bot._id}] at - ${t.processingDateTime.start}`;
+          this.logger.verbose(tickerMsg);
+          this.dasService.emit('ticker-info', tickerMsg);
+          const limit = EnvConfig.TICKER_ORDER_QUEUE_LIMIT;
+          const queuedTickers = t.tickers.slice(0, limit);
+          const tickerOrderMsg = `Creating new orders for ${queuedTickers.map(
+            (t) => t.ticker,
+          )} tickers`;
+          this.logger.log(tickerOrderMsg);
+          this.dasService.emit('ticker-info', tickerOrderMsg);
+          queuedTickers?.map(async (tk: ITickerData) => {
+            const tickerMarketCap = this.tickerData?.find((td: ITickerData) => {
+              return td.ticker === tk.ticker;
+            });
+            if (!isNil(tickerMarketCap)) {
+              const { orders } = t.bot.strategies;
+              const {
+                totalSharePrice,
+                stopLossPercent,
+                takeProfitPercent,
+                timeLimitStop,
+                longOrShort,
+                marketOrLimit,
+                limitOrderPercent,
+              } = orders;
+              const tickerCurrentPrice = parseFloat(
+                (tickerMarketCap.min.c * limitOrderPercent).toFixed(2),
+              );
+              const highRange = parseFloat(
+                (tickerMarketCap.min.c * takeProfitPercent).toFixed(2),
+              );
+              const lowRange = parseFloat(
+                (tickerMarketCap.min.c * stopLossPercent).toFixed(2),
+              );
+
+              const tradeBotOderId = new Types.ObjectId();
+              const isLimitOrder = marketOrLimit === 'LMT';
+              const isLongPosition = longOrShort === 'long';
+
+              const perSharePrice = isLimitOrder
+                ? isLongPosition
+                  ? tickerMarketCap.min.c + tickerCurrentPrice
+                  : tickerMarketCap.min.c - tickerCurrentPrice
+                : 0;
+
+              if (perSharePrice > 0) {
+                const numberOfShares = Math.floor(
+                  Number(totalSharePrice) / Number(perSharePrice),
+                );
+                if (numberOfShares > 0) {
+                  const tradeBotOrder = {
+                    _id: tradeBotOderId,
+                    type: TradeType.ORDER,
+                    bs:
+                      longOrShort === 'long'
+                        ? BuySellType.BUY
+                        : BuySellType.SELL,
+                    price: perSharePrice,
+                    symbol: tickerMarketCap.ticker,
+                    route: 'SMAT',
+                    numberOfShares,
+                    stopLossPercent,
+                    takeProfitPercent,
+                    timeLimitStop,
+                    timeOfTrade: '',
+                    tradeNumber: '',
+                    botId: new Types.ObjectId(t.bot._id.$oid),
+                    botName: t.bot.name,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                    status: TradeStatus.PENDING,
+                    message: '',
+                    rawCommand: '',
+                    token: generateNewOrderToken().toString(),
+                  };
+
+                  const orderCommand = this.createOrderCommand(
+                    lowRange,
+                    highRange,
+                    tradeBotOrder,
+                    marketOrLimit,
+                    tickerCurrentPrice,
+                  );
+                  tradeBotOrder.rawCommand = orderCommand.ToString();
+                  await this.dasService.addBotOrder(
+                    tradeBotOrder as unknown as TradeBotOrder,
+                  );
+                  const rawCommand = `TRADE BOT ORDER COMMAND- ${tradeBotOrder.rawCommand}`;
+                  this.logger.verbose(rawCommand);
+                  await this.dasService.sendCommandToServer(orderCommand);
+                  this.dasService.emit('ticker-info', rawCommand);
+                }
+              }
+            } else {
+              const tickerMsg = `No market cap data found for ${tk.ticker}`;
+              this.logger.warn(tickerMsg);
+              this.dasService.emit('ticker-info', tickerMsg);
+            }
+          });
+        }
+      });
+      this.logger.log(`Last scheduler run for bot trades: ${new Date()}`);
+      // this.dasService.emit('filteredTickers', this.tradeService.FilteredTickers);
+    } else {
+      this.logger.log(`Scheduler is disabled`);
+    }
   }
 
   @Cron(EnvConfig.SCHEDULER.CRON.DATA_REFRESH)
   async posRefresh() {
-    this.dasService.posRefresh();
-    this.logger.log(`Last scheduler run for data refresh: ${new Date()}`);
+    if (!EnvConfig.SCHEDULER.DISABLED) {
+      this.dasService.posRefresh();
+      this.logger.log(`Last scheduler run for data refresh: ${new Date()}`);
+    } else {
+      this.logger.log(`Scheduler is disabled`);
+    }
   }
 
   private createOrderCommand(
@@ -351,9 +364,13 @@ export class SchedulerService {
 
   @Cron(EnvConfig.SCHEDULER.CRON.MARKET_CAP)
   async fetchMarketCap() {
-    this.tickerData = await this.polygonApiService.getMarketCap();
-    this.logger.log(`tickerData- ${this.tickerData.length}`);
-    this.logger.log(`Last scheduler run for market caps: ${new Date()}`);
-    // this.dasService.emit('tickerAverages', this.polygonApiService.averages);
+    if (!EnvConfig.SCHEDULER.DISABLED) {
+      this.tickerData = await this.polygonApiService.getMarketCap();
+      this.logger.log(`tickerData- ${this.tickerData.length}`);
+      this.logger.log(`Last scheduler run for market caps: ${new Date()}`);
+      // this.dasService.emit('tickerAverages', this.polygonApiService.averages);
+    } else {
+      this.logger.log(`Scheduler is disabled`);
+    }
   }
 }

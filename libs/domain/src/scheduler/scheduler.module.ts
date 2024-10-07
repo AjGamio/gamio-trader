@@ -16,6 +16,9 @@ import { TradeOrder, TradeOrderSchema } from '../trade-bot/tradeOrder.entity';
 import { TradeService } from '../trade/trade.service';
 import { SchedulerService } from './scheduler.service';
 import { TradeBotsService } from '../trade-bot/tradeBot.service';
+import { BotModel, BotSchema } from '../bot/bot.model';
+import { RedisService } from '../redis/redis.service';
+import { RedisModule } from '../redis/redis.module';
 
 @Module({
   imports: [
@@ -26,7 +29,9 @@ import { TradeBotsService } from '../trade-bot/tradeBot.service';
       { name: TradeOrder.name, schema: TradeOrderSchema },
       { name: Stock.name, schema: StockSchema },
       { name: Position.name, schema: PositionSchema },
+      { name: BotModel.name, schema: BotSchema },
     ]),
+    RedisModule,
     DasLibModule,
   ],
   providers: [
@@ -34,6 +39,7 @@ import { TradeBotsService } from '../trade-bot/tradeBot.service';
     PolygonApiService,
     TradeService,
     DasService,
+    RedisService,
     TradeBotsService,
   ],
   exports: [
@@ -41,6 +47,7 @@ import { TradeBotsService } from '../trade-bot/tradeBot.service';
     PolygonApiService,
     TradeService,
     DasService,
+    RedisService,
     TradeBotsService,
   ],
 })

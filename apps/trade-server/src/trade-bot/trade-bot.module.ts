@@ -12,6 +12,8 @@ import {
 } from 'gamio/domain/trade-bot/tradeBotOder.entity';
 import { SchedulerModule } from 'gamio/domain/scheduler/scheduler.module';
 import { EnvConfig } from 'gamio/domain/config/env.config';
+import { BotModel, BotSchema } from 'gamio/domain/bot/bot.model';
+import { BotController } from './bot.controller';
 
 /**
  * Module for managing trade bots.
@@ -32,11 +34,12 @@ import { EnvConfig } from 'gamio/domain/config/env.config';
     MongooseModule.forFeature([
       { name: TradeBot.name, schema: TradeBotSchema },
       { name: TradeBotOrder.name, schema: TradeBotOrderSchema },
+      { name: BotModel.name, schema: BotSchema },
     ]),
     // Include the SchedulerModule for scheduling tasks
     SchedulerModule,
   ],
   providers: [], // No additional providers for now
-  controllers: [TradeBotsController], // Include the TradeBotsController in the module
+  controllers: [TradeBotsController, BotController], // Include the TradeBotsController in the module
 })
 export class TradeBotModule {}

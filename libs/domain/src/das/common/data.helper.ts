@@ -7,6 +7,7 @@ import {
   SLOrder,
   Trade,
 } from '../interfaces/iData';
+import { MessageType, ProcessingStatus } from '../interfaces/iEventData';
 
 const convertDataToJSON = (dataString: string): JsonData => {
   const prefixMap: Record<string, string> = {
@@ -340,3 +341,42 @@ const convertBuyingPowerDataToJSON = (
 
 export const processSocketData = (data: string): JsonData =>
   convertDataToJSON(data);
+
+// Function to map numeric value to ProcessingStatus enum
+export const mapToProcessingStatus = (
+  statusNumber: number,
+): ProcessingStatus => {
+  switch (statusNumber) {
+    case 0:
+      return ProcessingStatus.Active;
+    case 1:
+      return ProcessingStatus.Processing;
+    case 2:
+      return ProcessingStatus.Queued;
+    case 3:
+      return ProcessingStatus.Blocked;
+    case 4:
+      return ProcessingStatus.Empty;
+    default:
+      console.log(`Invalid status number: ${statusNumber}`);
+      return ProcessingStatus.Empty;
+    // throw new Error(`Invalid status number: ${statusNumber}`);
+  }
+};
+
+// Function to map numeric value to MessageType enum
+export const mapToMessageType = (messageTypeNumber: number): MessageType => {
+  switch (messageTypeNumber) {
+    case 0:
+      return MessageType.Info;
+    case 1:
+      return MessageType.Warning;
+    case 2:
+      return MessageType.Error;
+    case 3:
+      return MessageType.Success;
+    default:
+      console.log(`Invalid message type number: ${messageTypeNumber}`);
+      return MessageType.Info;
+  }
+};

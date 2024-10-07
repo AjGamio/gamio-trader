@@ -34,10 +34,27 @@ export const EnvConfig = {
   },
   MAX_LISTENERS_COUNT: Number(process.env.MAX_LISTENERS_COUNT) ?? 15,
   SCHEDULER: {
+    DISABLED: process.env.DISABLE_SCHEDULER === 'true',
     CRON: {
       MARKET_CAP: process.env.MARKET_CAP_SCHEDULER_CRON ?? '0 */10 * * * *',
       BOT_TRADE: process.env.BOT_TRADE_SCHEDULER_CRON ?? '0 */15 * * * *',
       DATA_REFRESH: process.env.DATA_REFRESH_SCHEDULER_CRON ?? '0 */20 * * * *',
+    },
+  },
+  REDIS: {
+    HOST: process.env.REDIS_HOST,
+    PORT: Number(process.env.REDIS_PORT),
+    USERNAME: process.env.REDIS_USERNAME,
+    PASSWORD: process.env.REDIS_PASSWORD,
+    ENABLED: process.env.REDIS_ENABLED === 'true',
+    URL:
+      process.env.REDIS_URL ??
+      `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
+    CHANNELS: {
+      DAS_TASK_SCHEDULER: process.env.DAS_TASK_SCHEDULER_CHANNEL,
+      DAS_WORKER: process.env.DAS_WORKER_CHANNEL,
+      DAS_CONSOLE: process.env.DAS_CONSOLE_CHANNEL,
+      DAS_BOT_EVENT_CHANNEL: process.env.DAS_BOT_EVENT_CHANNEL,
     },
   },
 };

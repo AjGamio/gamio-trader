@@ -16,18 +16,13 @@ import { EnvConfig } from 'gamio/domain/config/env.config';
   imports: [
     // Connect to MongoDB using the provided URL
     MongooseModule.forRoot(EnvConfig.MONGO_DB_URL),
-
     // Include the DasModule for DAS (Direct Access Service) functionality
     DasModule,
-
     // Include the DasEventModule for managing DAS events
     DasEventModule,
-
     // Include the TradeBotModule for managing trade bots
     TradeBotModule,
-
     AuthModule,
-
     UsersModule,
   ],
   controllers: [AppController], // Include the main application controller
