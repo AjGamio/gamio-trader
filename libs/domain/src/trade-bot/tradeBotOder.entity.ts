@@ -25,7 +25,7 @@ export enum TradeType {
 }
 
 @Schema({
-  collection: 'trader',
+  collection: 'botOrders',
 })
 export class TradeBotOrder extends Document {
   @Prop({ required: true })
